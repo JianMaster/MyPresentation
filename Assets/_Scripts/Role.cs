@@ -3,32 +3,28 @@ using UnityEngine;
 [RequireComponent(typeof(Animator))]
 public class Role : MonoBehaviour
 {
-    [SerializeField] private Transform lookTarget;
-    [SerializeField] private float lookWeight = 0.8f;
-    [SerializeField] private float bodyWeight = 0.2f;
-    [SerializeField] private float headWeight = 0.8f;
-    [SerializeField] private float eyesWeight = 0f;
-    [SerializeField] private float clampWeight = 0.6f;
+    [SerializeField] private Transform _lookTarget;
 
-    private Animator animator;
+    private Animator _animator;
 
     private void Awake()
     {
-        animator = GetComponent<Animator>();
+        _animator = GetComponent<Animator>();
     }
 
     private void OnAnimatorIK(int layerIndex)
     {
-        if (lookTarget == null) return;
+        if (_lookTarget == null) return;
 
-        animator.SetLookAtWeight(
-            lookWeight,
-            bodyWeight,
-            headWeight,
-            eyesWeight,
-            clampWeight
-        );
+        _animator.SetLookAtWeight(0.8f, 0.2f, 0.8f, 0f, 0.6f);
+        _animator.SetLookAtPosition(_lookTarget.position);
+    }
 
-        animator.SetLookAtPosition(lookTarget.position);
+    public void PlayNod()
+    {
+        if (TryGetComponent<NodAnimation>(out var nodAnimation))
+        {
+            nodAnimation.PlayNod();
+        }
     }
 }
