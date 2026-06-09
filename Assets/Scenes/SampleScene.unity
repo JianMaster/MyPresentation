@@ -877,9 +877,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78a56b32588f87d48ad60047175ea08d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Role
-  lookTarget: {fileID: 330585546}
-  nodAngle: 12
-  defaultNodDuration: 0.5
+  _lookTarget: {fileID: 330585546}
 --- !u!1 &957866104 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: c68bc47e35a8ed446901a0b729590cdf, type: 3}
@@ -1079,9 +1077,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78a56b32588f87d48ad60047175ea08d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Role
-  lookTarget: {fileID: 330585546}
-  nodAngle: 12
-  defaultNodDuration: 0.5
+  _lookTarget: {fileID: 330585546}
 --- !u!4 &1225333520 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: b5e70ee498b8852499436479469e2796, type: 3}
@@ -1177,9 +1173,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78a56b32588f87d48ad60047175ea08d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Role
-  lookTarget: {fileID: 330585546}
-  nodAngle: 12
-  defaultNodDuration: 0.5
+  _lookTarget: {fileID: 330585546}
 --- !u!1001 &1602720468
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1247,6 +1241,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 32e34c0ef0ed5c1449e1abc6bccc073e, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1602720471}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 32e34c0ef0ed5c1449e1abc6bccc073e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1602720472}
   m_SourcePrefab: {fileID: 100100000, guid: 32e34c0ef0ed5c1449e1abc6bccc073e, type: 3}
 --- !u!4 &1602720469 stripped
 Transform:
@@ -1265,9 +1262,104 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78a56b32588f87d48ad60047175ea08d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Role
-  lookTarget: {fileID: 330585546}
-  nodAngle: 12
-  defaultNodDuration: 0.5
+  _lookTarget: {fileID: 330585546}
+--- !u!114 &1602720472
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1341775428}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e8fe2e97dc94fa4aa0fc3437f47da5b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NodAnimation
+  _nodAngle: 12
+  _nodDuration: 0.5
+  _nodCount: 1
+--- !u!1 &1609972009
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1609972010}
+  - component: {fileID: 1609972011}
+  m_Layer: 0
+  m_Name: UdpReceiver
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1609972010
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1609972009}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1609972011
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1609972009}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1e96fc574454704b86202a79d31e908, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AnalysisUdpReceiver
+  listenPort: 5005
+  latestData:
+    timestamp: 0
+    sample_rate: 0
+    block_seconds: 0
+    feature_window_seconds: 0
+    asr_window_seconds: 0
+    enabled:
+      pronunciation: 0
+      prosody: 0
+      asr: 0
+    analyzers:
+      pronunciation:
+        hnr_db: 0
+        jitter: 0
+        shimmer_db: 0
+        spectral_flux: 0
+      prosody:
+        mean_pitch_st: 0
+        pitch_range_st: 0
+        pitch_variation: 0
+        mean_loudness: 0
+        loudness_range: 0
+        loudness_variation: 0
+        sound_level_db: 0
+      asr:
+        status: 
+        transcript: 
+        speech_rate_cpm: 0
+        pause_count: 0
+        speaking_ratio: 0
+        available_seconds: 0
+        required_seconds: 0
+        error: 
+  latestJson: 
+  hasData: 0
+  packetsReceived: 0
+  lastError: 
 --- !u!1 &1667420923
 GameObject:
   m_ObjectHideFlags: 0
@@ -1297,7 +1389,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d368e68ca41c19b42a0fccb41c52e91a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SceneManager
-  role: {fileID: 1602720471}
+  _role: {fileID: 1602720471}
 --- !u!4 &1667420925
 Transform:
   m_ObjectHideFlags: 0
@@ -1550,9 +1642,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78a56b32588f87d48ad60047175ea08d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Role
-  lookTarget: {fileID: 330585546}
-  nodAngle: 12
-  defaultNodDuration: 0.5
+  _lookTarget: {fileID: 330585546}
 --- !u!1 &1900358717
 GameObject:
   m_ObjectHideFlags: 0
@@ -2011,9 +2101,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 78a56b32588f87d48ad60047175ea08d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Role
-  lookTarget: {fileID: 330585546}
-  nodAngle: 12
-  defaultNodDuration: 0.5
+  _lookTarget: {fileID: 330585546}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -2024,3 +2112,4 @@ SceneRoots:
   - {fileID: 1667420925}
   - {fileID: 1900358718}
   - {fileID: 823371588}
+  - {fileID: 1609972010}
