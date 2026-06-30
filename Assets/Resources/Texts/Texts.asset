@@ -1,0 +1,144 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 54ede052e1ce5db42a615773656c9d63, type: 3}
+  m_Name: Texts
+  m_EditorClassIdentifier: Assembly-CSharp::SpeechText
+  _texts:
+  - text: 皆さん、本日はお忙しい中、お集まりいただきありがとうございます。
+    emotion: 1
+    speed: 1
+    volume: 1
+    emphasis:
+    - 本日
+    - ありがとうございます
+    pause_after:
+    - 皆さん
+    - 本日はお忙しい中
+    gesture: 姿勢を正し、軽く一礼する
+    gaze: 全体をゆっくり見る
+  - text: 私たちを取り巻く環境は、日々大きく変化しています。
+    emotion: 0
+    speed: 1
+    volume: 1
+    emphasis:
+    - 環境
+    - 日々
+    - 大きく変化
+    pause_after:
+    - 私たちを取り巻く環境は
+    - 日々
+    gesture: 片手を軽く開き、状況を示す
+    gaze: 前方中央を見る
+  - text: しかし、どのような時代であっても、私たちが大切にすべきことは変わりません。
+    emotion: 3
+    speed: 0
+    volume: 1
+    emphasis:
+    - どのような時代
+    - 大切にすべきこと
+    - 変わりません
+    pause_after:
+    - しかし
+    - どのような時代であっても
+    gesture: 背筋を伸ばし、落ち着いて話す
+    gaze: 全体を見渡す
+  - text: それは、お客様に誠実に向き合い、仲間を信頼し、一つひとつの仕事に責任を持つことです。
+    emotion: 1
+    speed: 0
+    volume: 1
+    emphasis:
+    - お客様
+    - 誠実
+    - 仲間
+    - 責任
+    pause_after:
+    - それは
+    - お客様に誠実に向き合い
+    - 仲間を信頼し
+    gesture: 手を胸元に近づけ、責任感を示す
+    gaze: 一人ひとりに語りかけるように見る
+  - text: 成果は、一人の力だけで生まれるものではありません。
+    emotion: 2
+    speed: 1
+    volume: 1
+    emphasis:
+    - 成果
+    - 一人の力だけ
+    - ではありません
+    pause_after:
+    - 成果は
+    - 一人の力だけで
+    gesture: 小さく首を横に振る
+    gaze: 前方をまっすぐ見る
+  - text: 現場で努力する皆さん一人ひとりの積み重ねが、会社の信頼を支えています。
+    emotion: 5
+    speed: 1
+    volume: 1
+    emphasis:
+    - 皆さん一人ひとり
+    - 積み重ね
+    - 会社の信頼
+    pause_after:
+    - 現場で努力する
+    - 皆さん一人ひとりの積み重ねが
+    gesture: 両手を軽く開き、感謝を示す
+    gaze: 全体を温かく見る
+  - text: これからも私たちは、変化を恐れず、前向きに挑戦し続けます。
+    emotion: 4
+    speed: 1
+    volume: 2
+    emphasis:
+    - これからも
+    - 変化を恐れず
+    - 挑戦し続けます
+    pause_after:
+    - これからも私たちは
+    - 変化を恐れず
+    gesture: 身体を少し前に向け、力強さを出す
+    gaze: 遠くを見るように前方を見る
+  - text: そして、より良い価値を社会に届けられる会社を目指してまいります。
+    emotion: 3
+    speed: 1
+    volume: 1
+    emphasis:
+    - より良い価値
+    - 社会
+    - 目指してまいります
+    pause_after:
+    - そして
+    - より良い価値を
+    gesture: 手を前に差し出し、未来への方向を示す
+    gaze: 全体から前方中央へ戻す
+  - text: 皆さんと共に、次の一歩を力強く進めていきたいと思います。
+    emotion: 4
+    speed: 0
+    volume: 2
+    emphasis:
+    - 皆さんと共に
+    - 次の一歩
+    - 力強く
+    pause_after:
+    - 皆さんと共に
+    - 次の一歩を
+    gesture: 軽くうなずき、前向きな姿勢を示す
+    gaze: 全体をしっかり見る
+  - text: 本日もどうぞよろしくお願いいたします。
+    emotion: 1
+    speed: 0
+    volume: 1
+    emphasis:
+    - 本日
+    - よろしくお願いいたします
+    pause_after:
+    - 本日も
+    gesture: 最後に一礼する
+    gaze: 全体を見る
