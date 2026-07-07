@@ -104,3 +104,5 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+/Assets/Resources/Models/New Folder/room.fbx
+/Assets/Resources/Models/New Folder/room.fbx.meta
