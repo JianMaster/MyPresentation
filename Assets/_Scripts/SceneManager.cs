@@ -7,12 +7,12 @@ public class SceneManager : MonoBehaviour {
     [SerializeField] private Camera _playerCamera;
     [SerializeField] private int _highlightLayer = 6;
     [SerializeField] private float _highlightDelay = 2f;
-    [SerializeField] private float _gazeMaxDistance = 100f;
-    [SerializeField] private float _screenCenterThreshold = 0.08f;
 
     public List<Role> _roles;
 
-    private readonly Dictionary<Role, HighlightState> _highlightStates = new Dictionary<Role, HighlightState>();
+    private readonly Dictionary<Role, float> _lookAtPlayerTimes = new Dictionary<Role, float>();
+    private readonly HashSet<Role> _highlightedRoles = new HashSet<Role>();
+    private readonly Dictionary<Transform, int> _originalLayers = new Dictionary<Transform, int>();
 
     private void Awake() {
 
@@ -42,40 +42,41 @@ public class SceneManager : MonoBehaviour {
     }
 
     private void UpdateRoleHighlight(Role role) {
-        HighlightState state = GetHighlightState(role);
+        _lookAtPlayerTimes.TryAdd(role, 0f);
 
         if (role.IslookingAtPlayer) {
-            state.LookingAtPlayerTime += Time.deltaTime;
+            _lookAtPlayerTimes[role] += Time.deltaTime;
 
-            if (!state.IsHighlighted && state.LookingAtPlayerTime >= _highlightDelay) {
-                SetHighlighted(role, state, true);
+            if (!_highlightedRoles.Contains(role) && _lookAtPlayerTimes[role] >= _highlightDelay) {
+                SetHighlighted(role, true);
             }
         }
         else {
-            state.LookingAtPlayerTime = 0f;
+            _lookAtPlayerTimes[role] = 0f;
         }
 
-        if (state.IsHighlighted && IsPlayerLookingAt(role)) {
-            SetHighlighted(role, state, false);
-            state.LookingAtPlayerTime = 0f;
+        if (_highlightedRoles.Contains(role) && IsPlayerLookingAt(role)) {
+            SetHighlighted(role, false);
+            _lookAtPlayerTimes[role] = 0f;
         }
     }
 
-    private HighlightState GetHighlightState(Role role) {
-        if (_highlightStates.TryGetValue(role, out HighlightState state)) {
-            return state;
+    private void SetHighlighted(Role role, bool highlighted) {
+        if (highlighted) {
+            _highlightedRoles.Add(role);
         }
-
-        state = new HighlightState(role);
-        _highlightStates.Add(role, state);
-        return state;
-    }
-
-    private void SetHighlighted(Role role, HighlightState state, bool highlighted) {
-        state.IsHighlighted = highlighted;
+        else {
+            _highlightedRoles.Remove(role);
+        }
 
         foreach (Transform child in role.GetComponentsInChildren<Transform>(true)) {
-            child.gameObject.layer = highlighted ? _highlightLayer : state.GetOriginalLayer(child);
+            if (highlighted) {
+                _originalLayers.TryAdd(child, child.gameObject.layer);
+                child.gameObject.layer = _highlightLayer;
+            }
+            else if (_originalLayers.TryGetValue(child, out int originalLayer)) {
+                child.gameObject.layer = originalLayer;
+            }
         }
     }
 
@@ -83,46 +84,10 @@ public class SceneManager : MonoBehaviour {
         if (_playerCamera == null) return false;
 
         Ray ray = _playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-        if (Physics.Raycast(ray, out RaycastHit hit, _gazeMaxDistance)) {
+        if (Physics.Raycast(ray, out RaycastHit hit, 100f)) {
             return hit.transform == role.transform || hit.transform.IsChildOf(role.transform);
         }
 
-        Bounds bounds = GetRoleBounds(role);
-        if (bounds.size == Vector3.zero) return false;
-
-        Vector3 viewportPoint = _playerCamera.WorldToViewportPoint(bounds.center);
-        if (viewportPoint.z <= 0f) return false;
-
-        Vector2 offset = new Vector2(viewportPoint.x - 0.5f, viewportPoint.y - 0.5f);
-        return offset.magnitude <= _screenCenterThreshold;
-    }
-
-    private Bounds GetRoleBounds(Role role) {
-        Renderer[] renderers = role.GetComponentsInChildren<Renderer>();
-        if (renderers.Length == 0) return new Bounds(role.transform.position, Vector3.zero);
-
-        Bounds bounds = renderers[0].bounds;
-        for (int i = 1; i < renderers.Length; i++) {
-            bounds.Encapsulate(renderers[i].bounds);
-        }
-
-        return bounds;
-    }
-
-    private class HighlightState {
-        public float LookingAtPlayerTime;
-        public bool IsHighlighted;
-
-        private readonly Dictionary<Transform, int> _originalLayers = new Dictionary<Transform, int>();
-
-        public HighlightState(Role role) {
-            foreach (Transform child in role.GetComponentsInChildren<Transform>(true)) {
-                _originalLayers[child] = child.gameObject.layer;
-            }
-        }
-
-        public int GetOriginalLayer(Transform transform) {
-            return _originalLayers.TryGetValue(transform, out int layer) ? layer : transform.gameObject.layer;
-        }
+        return false;
     }
 }
