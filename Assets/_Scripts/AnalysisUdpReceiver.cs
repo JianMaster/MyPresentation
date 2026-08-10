@@ -190,6 +190,7 @@ public class AnalysisEnabled
 {
     public bool pronunciation;
     public bool prosody;
+    public bool delivery;
     public bool asr;
 }
 
@@ -198,6 +199,7 @@ public class AnalysisAnalyzers
 {
     public PronunciationAnalysis pronunciation;
     public ProsodyAnalysis prosody;
+    public DeliveryAnalysis delivery;
     public AsrAnalysis asr;
 }
 
@@ -220,6 +222,17 @@ public class ProsodyAnalysis
     public double loudness_range;
     public double loudness_variation;
     public double sound_level_db;
+}
+
+[Serializable]
+public class DeliveryAnalysis
+{
+    public bool baseline_ready;
+    public double arousal_score;
+    public string arousal_level;
+    public double dominance_score;
+    public string dominance_level;
+    public string delivery_style;
 }
 
 [Serializable]
