@@ -1,27 +1,61 @@
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.InputSystem;
 
 public class UIManager : MonoBehaviour {
     public SpeechText _speechText;
     public TextMeshProUGUI _textDisplay;
 
-    private int _txtIndex = 0;
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start() {
+    private void Awake() {
         if (_speechText == null) {
-            Debug.LogError("SpeechText is not assigned in the UIManager.");
-            return;
+            _speechText = SpeechText.LoadDefault();
         }
-        _textDisplay.text = _speechText.GetProcessedText(_txtIndex);
+        if (_textDisplay == null) {
+            Debug.LogError("Text display is not assigned in the UIManager.");
+        }
     }
 
-    // Update is called once per frame
-    void Update() {
-        if (Keyboard.current.enterKey.wasPressedThisFrame) {
-            _txtIndex++;
-            _textDisplay.text = _speechText.GetProcessedText(_txtIndex);
+    public SpeechText SpeechText => _speechText;
+
+    public void ShowWaiting(string message) {
+        SetText($"<size=120%>音声分析システムを待っています</size>\n{message}");
+    }
+
+    public void ShowCalibration(string calibrationText, string status) {
+        SetText(
+            $"<size=120%><b>個人基準の校正</b></size>\n" +
+            $"普段の発表時の声で読み、終わったら Enter を押してください。\n\n" +
+            $"{calibrationText}\n\n<color=#FFD54A>{status}</color>"
+        );
+    }
+
+    public void ShowLine(int textIndex, int total, string status) {
+        string body = _speechText != null ? _speechText.GetProcessedText(textIndex) : string.Empty;
+        SetText(
+            $"<size=85%>台詞 {textIndex + 1} / {total}</size>\n" +
+            $"{body}\n\n<color=#B2FF59>{status}</color>"
+        );
+    }
+
+    public void ShowFinalReport(SessionEvaluationResult result, string logPath) {
+        SetText(
+            $"<size=130%><b>トレーニング完了</b></size>\n\n" +
+            $"総合　{result.totalScore:F1}\n" +
+            $"語気　{result.deliveryScore:F1}　　話速　{result.speedScore:F1}\n" +
+            $"音量　{result.volumeScore:F1}　　視線　{result.gazeScore:F1}\n\n" +
+            $"得意：{result.strongestDimension}\n" +
+            $"優先改善：{result.weakestDimension}\n" +
+            $"{result.advice}\n\n" +
+            $"<size=65%><color=#90A4AE>記録: {logPath}</color></size>"
+        );
+    }
+
+    public void ShowFatalError(string message) {
+        SetText($"<color=#FF5252><b>開始できません</b>\n{message}</color>");
+    }
+
+    private void SetText(string value) {
+        if (_textDisplay != null) {
+            _textDisplay.text = value;
         }
     }
 }

@@ -3,6 +3,7 @@ using UnityEngine;
 
 [RequireComponent(typeof(Animator))]
 public class Role : MonoBehaviour {
+    [SerializeField] private string _roleId;
     [SerializeField] private Transform _lookTarget;
     [SerializeField] private Transform _lookPlayerTarget;
     [SerializeField] private float _lookTransitionTime = 0.25f;
@@ -19,11 +20,14 @@ public class Role : MonoBehaviour {
     private Vector3 _currentLookPosition;
     private Vector3 _lookVelocity;
     private bool _hasLookPosition;
+    public string RoleId => string.IsNullOrWhiteSpace(_roleId) ? gameObject.name : _roleId;
 
     private void Awake() {
         _animator = GetComponent<Animator>();
         _lookAction = GetComponent<LookAction>();
-        _lookAction.Init(this);
+        if (_lookAction != null) {
+            _lookAction.Init(this);
+        }
     }
 
 
@@ -56,8 +60,35 @@ public class Role : MonoBehaviour {
         }
     }
 
+    public void PlayNodImmediate() {
+        if (TryGetComponent<NodAnimation>(out var nodAnimation)) {
+            nodAnimation.PlayNod();
+        }
+    }
+
+    public void PlayClap() {
+        if (_animator != null) {
+            _animator.SetTrigger("Clap");
+        }
+    }
+
+    public void PromptLookAtPlayer(float duration = 10f, float responseTime = 0f) {
+        if (_lookAction != null) {
+            _lookAction.LookAtPlayer(duration, responseTime);
+        }
+    }
+
+    public void CancelLookPrompt() {
+        if (_lookAction != null) {
+            _lookAction.StopLookingAtPlayer();
+        }
+        else {
+            SetLookAtPlayer(false);
+        }
+    }
+
     public void Refresh(AnalysisData analysisData) {
-        _lookAction.LookAtPlayer(10f, _responseTime);
+        PromptLookAtPlayer(10f, _responseTime);
     }
 
     public void SetLookAtPlayer(bool lookAtPlayer) {

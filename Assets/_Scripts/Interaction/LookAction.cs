@@ -10,9 +10,23 @@ public class LookAction : MonoBehaviour {
     }
 
     public void LookAtPlayer(float duration, float responseTime) {
-        if (_lookCoroutine != null) return;
+        StopLookingAtPlayer();
 
         _lookCoroutine = StartCoroutine(LookAtPlayerRoutine(duration, responseTime));
+    }
+
+    public void StopLookingAtPlayer() {
+        if (_lookCoroutine != null) {
+            StopCoroutine(_lookCoroutine);
+            _lookCoroutine = null;
+        }
+        if (_role != null) {
+            _role.IslookingAtPlayer = false;
+        }
+    }
+
+    private void OnDisable() {
+        StopLookingAtPlayer();
     }
 
     private IEnumerator LookAtPlayerRoutine(float duration, float responseTime) {

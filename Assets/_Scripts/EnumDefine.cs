@@ -1,10 +1,8 @@
-public enum Emotion {
-    Neutral,
-    Warm,
-    Serious,
-    Confident,
-    Encouraging,
-    Grateful
+public enum DeliveryStyle {
+    CalmConfident,
+    EnergeticConfident,
+    EnergeticUnsteady,
+    SubduedHesitant
 }
 
 public enum Speed {
@@ -20,14 +18,21 @@ public enum Volume {
 }
 
 public static class EnumTool {
-    public static string GetEmotionText(Emotion emotion) {
-        return emotion switch {
-            Emotion.Warm => "丁寧",
-            Emotion.Serious => "厳粛",
-            Emotion.Confident => "確信",
-            Emotion.Encouraging => "前向き",
-            Emotion.Grateful => "感謝",
-            _ => "平静",
+    public static string GetDeliveryStyleText(DeliveryStyle style) {
+        return style switch {
+            DeliveryStyle.EnergeticConfident => "活力・自信",
+            DeliveryStyle.EnergeticUnsteady => "活力・不安定",
+            DeliveryStyle.SubduedHesitant => "控えめ・ためらい",
+            _ => "冷静・自信",
+        };
+    }
+
+    public static string GetDeliveryStyleWireValue(DeliveryStyle style) {
+        return style switch {
+            DeliveryStyle.EnergeticConfident => "energetic_confident",
+            DeliveryStyle.EnergeticUnsteady => "energetic_unsteady",
+            DeliveryStyle.SubduedHesitant => "subdued_hesitant",
+            _ => "calm_confident",
         };
     }
 

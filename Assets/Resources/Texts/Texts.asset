@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: Texts
   m_EditorClassIdentifier: Assembly-CSharp::SpeechText
   _texts:
-  - text: 皆さん、本日はお忙しい中、お集まりいただきありがとうございます。
-    emotion: 1
+  - lineId: company-01
+    text: 皆さん、本日はお忙しい中、お集まりいただきありがとうございます。
+    deliveryStyle: 0
     speed: 1
     volume: 1
+    targetRoleIndex: -1
     emphasis:
     - 本日
     - ありがとうございます
@@ -25,10 +27,12 @@ MonoBehaviour:
     - 本日はお忙しい中
     gesture: 姿勢を正し、軽く一礼する
     gaze: 全体をゆっくり見る
-  - text: 私たちを取り巻く環境は、日々大きく変化しています。
-    emotion: 0
+  - lineId: company-02
+    text: 私たちを取り巻く環境は、日々大きく変化しています。
+    deliveryStyle: 0
     speed: 1
     volume: 1
+    targetRoleIndex: -1
     emphasis:
     - 環境
     - 日々
@@ -38,10 +42,12 @@ MonoBehaviour:
     - 日々
     gesture: 片手を軽く開き、状況を示す
     gaze: 前方中央を見る
-  - text: しかし、どのような時代であっても、私たちが大切にすべきことは変わりません。
-    emotion: 3
+  - lineId: company-03
+    text: しかし、どのような時代であっても、私たちが大切にすべきことは変わりません。
+    deliveryStyle: 0
     speed: 0
     volume: 1
+    targetRoleIndex: -1
     emphasis:
     - どのような時代
     - 大切にすべきこと
@@ -51,10 +57,12 @@ MonoBehaviour:
     - どのような時代であっても
     gesture: 背筋を伸ばし、落ち着いて話す
     gaze: 全体を見渡す
-  - text: それは、お客様に誠実に向き合い、仲間を信頼し、一つひとつの仕事に責任を持つことです。
-    emotion: 1
+  - lineId: company-04
+    text: それは、お客様に誠実に向き合い、仲間を信頼し、一つひとつの仕事に責任を持つことです。
+    deliveryStyle: 0
     speed: 0
     volume: 1
+    targetRoleIndex: -1
     emphasis:
     - お客様
     - 誠実
@@ -66,10 +74,12 @@ MonoBehaviour:
     - 仲間を信頼し
     gesture: 手を胸元に近づけ、責任感を示す
     gaze: 一人ひとりに語りかけるように見る
-  - text: 成果は、一人の力だけで生まれるものではありません。
-    emotion: 2
+  - lineId: company-05
+    text: 成果は、一人の力だけで生まれるものではありません。
+    deliveryStyle: 0
     speed: 1
     volume: 1
+    targetRoleIndex: -1
     emphasis:
     - 成果
     - 一人の力だけ
@@ -79,10 +89,12 @@ MonoBehaviour:
     - 一人の力だけで
     gesture: 小さく首を横に振る
     gaze: 前方をまっすぐ見る
-  - text: 現場で努力する皆さん一人ひとりの積み重ねが、会社の信頼を支えています。
-    emotion: 5
+  - lineId: company-06
+    text: 現場で努力する皆さん一人ひとりの積み重ねが、会社の信頼を支えています。
+    deliveryStyle: 0
     speed: 1
     volume: 1
+    targetRoleIndex: -1
     emphasis:
     - 皆さん一人ひとり
     - 積み重ね
@@ -92,10 +104,12 @@ MonoBehaviour:
     - 皆さん一人ひとりの積み重ねが
     gesture: 両手を軽く開き、感謝を示す
     gaze: 全体を温かく見る
-  - text: これからも私たちは、変化を恐れず、前向きに挑戦し続けます。
-    emotion: 4
+  - lineId: company-07
+    text: これからも私たちは、変化を恐れず、前向きに挑戦し続けます。
+    deliveryStyle: 1
     speed: 1
     volume: 2
+    targetRoleIndex: -1
     emphasis:
     - これからも
     - 変化を恐れず
@@ -105,10 +119,12 @@ MonoBehaviour:
     - 変化を恐れず
     gesture: 身体を少し前に向け、力強さを出す
     gaze: 遠くを見るように前方を見る
-  - text: そして、より良い価値を社会に届けられる会社を目指してまいります。
-    emotion: 3
+  - lineId: company-08
+    text: そして、より良い価値を社会に届けられる会社を目指してまいります。
+    deliveryStyle: 1
     speed: 1
     volume: 1
+    targetRoleIndex: -1
     emphasis:
     - より良い価値
     - 社会
@@ -118,10 +134,12 @@ MonoBehaviour:
     - より良い価値を
     gesture: 手を前に差し出し、未来への方向を示す
     gaze: 全体から前方中央へ戻す
-  - text: 皆さんと共に、次の一歩を力強く進めていきたいと思います。
-    emotion: 4
+  - lineId: company-09
+    text: 皆さんと共に、次の一歩を力強く進めていきたいと思います。
+    deliveryStyle: 1
     speed: 0
     volume: 2
+    targetRoleIndex: -1
     emphasis:
     - 皆さんと共に
     - 次の一歩
@@ -131,10 +149,12 @@ MonoBehaviour:
     - 次の一歩を
     gesture: 軽くうなずき、前向きな姿勢を示す
     gaze: 全体をしっかり見る
-  - text: 本日もどうぞよろしくお願いいたします。
-    emotion: 1
+  - lineId: company-10
+    text: 本日もどうぞよろしくお願いいたします。
+    deliveryStyle: 0
     speed: 0
     volume: 1
+    targetRoleIndex: -1
     emphasis:
     - 本日
     - よろしくお願いいたします

@@ -23,9 +23,11 @@ public class AnalysisUdpReceiver : MonoBehaviour
     private bool hasPendingError;
     private volatile bool isRunning;
     private int receivedCount;
+    private double lastAcceptedTimestamp;
 
     public AnalysisData LatestData => latestData;
     public bool HasData => hasData;
+    public event Action<AnalysisData> AnalysisReceived;
 
     private void OnEnable()
     {
@@ -63,12 +65,18 @@ public class AnalysisUdpReceiver : MonoBehaviour
 
         try
         {
-            latestData = JsonUtility.FromJson<AnalysisData>(json);
+            AnalysisData parsedData = JsonUtility.FromJson<AnalysisData>(json);
+            if (parsedData == null) return;
+            if (parsedData.timestamp > 0d && parsedData.timestamp <= lastAcceptedTimestamp) return;
+
+            latestData = parsedData;
+            lastAcceptedTimestamp = parsedData.timestamp;
             latestJson = json;
             hasData = true;
             packetsReceived = Volatile.Read(ref receivedCount);
             lastError = string.Empty;
             Debug.Log($"Received AnalysisData: {JsonUtility.ToJson(latestData)}");
+            AnalysisReceived?.Invoke(latestData);
         }
         catch (Exception exception)
         {
@@ -177,6 +185,8 @@ public class AnalysisUdpReceiver : MonoBehaviour
 public class AnalysisData
 {
     public double timestamp;
+    public long sequence_id;
+    public bool speech_detected;
     public int sample_rate;
     public int block_seconds;
     public int feature_window_seconds;
@@ -229,10 +239,13 @@ public class DeliveryAnalysis
 {
     public bool baseline_ready;
     public double arousal_score;
+    public double raw_arousal_score;
     public string arousal_level;
     public double dominance_score;
+    public double raw_dominance_score;
     public string dominance_level;
     public string delivery_style;
+    public double relative_volume_score;
 }
 
 [Serializable]

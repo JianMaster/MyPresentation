@@ -23,7 +23,12 @@ public class SpeechText : ScriptableObject {
         TextItem item = _texts[textIndex];
         string body = ProcessBody(item);
 
-        return $"[{ColorTag(EnumTool.GetEmotionText(item.emotion), EmotionColor)}] [{ColorTag(EnumTool.GetSpeedText(item.speed), SpeedColor)}] [{ColorTag(EnumTool.GetVolumeText(item.volume), VolumeColor)}]\n{body}";
+        string guidance = string.Empty;
+        if (!string.IsNullOrWhiteSpace(item.gesture) || !string.IsNullOrWhiteSpace(item.gaze)) {
+            guidance = $"\n<size=75%><color=#B0BEC5>動作：{item.gesture}　視線：{item.gaze}</color></size>";
+        }
+
+        return $"[{ColorTag(EnumTool.GetDeliveryStyleText(item.deliveryStyle), EmotionColor)}] [{ColorTag(EnumTool.GetSpeedText(item.speed), SpeedColor)}] [{ColorTag(EnumTool.GetVolumeText(item.volume), VolumeColor)}]\n{body}{guidance}";
     }
 
     private static string ColorTag(string text, string color) {
@@ -54,11 +59,14 @@ public class SpeechText : ScriptableObject {
 
 [Serializable]
 public class TextItem {
+    public string lineId;
     [TextArea(2, 5)]
     public string text;
-    public Emotion emotion;
+    public DeliveryStyle deliveryStyle;
     public Speed speed;
     public Volume volume;
+    [Tooltip("Negative values rotate through the configured audience roles.")]
+    public int targetRoleIndex = -1;
     public string[] emphasis = Array.Empty<string>();
     public string[] pause_after = Array.Empty<string>();
     public string gesture;

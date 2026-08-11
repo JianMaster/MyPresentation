@@ -13,6 +13,8 @@ public class SceneManager : MonoBehaviour {
     private readonly Dictionary<Role, float> _lookAtPlayerTimes = new Dictionary<Role, float>();
     private readonly HashSet<Role> _highlightedRoles = new HashSet<Role>();
     private readonly Dictionary<Transform, int> _originalLayers = new Dictionary<Transform, int>();
+    public IReadOnlyList<Role> Roles => _roles;
+    public Camera PlayerCamera => _playerCamera;
 
     private void Awake() {
 
@@ -37,6 +39,7 @@ public class SceneManager : MonoBehaviour {
             }
         }
         if (keyboard != null && keyboard.qKey.wasPressedThisFrame) {
+            if (_roles == null || _roles.Count == 0) return;
             _roles[Random.Range(0, _roles.Count)].Refresh(analysisData);
         }
     }
@@ -80,7 +83,7 @@ public class SceneManager : MonoBehaviour {
         }
     }
 
-    private bool IsPlayerLookingAt(Role role) {
+    public bool IsPlayerLookingAt(Role role) {
         if (_playerCamera == null) return false;
 
         Ray ray = _playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
@@ -89,5 +92,17 @@ public class SceneManager : MonoBehaviour {
         }
 
         return false;
+    }
+
+    public void BeginGazePrompt(Role role) {
+        if (role == null) return;
+        role.PromptLookAtPlayer(10f, 0f);
+    }
+
+    public void CompleteGazePrompt(Role role) {
+        if (role == null) return;
+        role.CancelLookPrompt();
+        SetHighlighted(role, false);
+        _lookAtPlayerTimes[role] = 0f;
     }
 }
