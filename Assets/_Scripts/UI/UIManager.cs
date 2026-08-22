@@ -1,27 +1,16 @@
 using TMPro;
 using UnityEngine;
 
-public class UIManager : MonoBehaviour {
-    public SpeechText _speechText;
-    public TextMeshProUGUI _textDisplay;
+public sealed class UIManager : MonoBehaviour {
+    [SerializeField] private TextMeshProUGUI _textDisplay;
 
-    private void Awake() {
-        if (_speechText == null) {
-            _speechText = SpeechText.LoadDefault();
-        }
-        if (_textDisplay == null) {
-            Debug.LogError("Text display is not assigned in the UIManager.");
-        }
-    }
-
-    public SpeechText SpeechText => _speechText;
+    public bool IsConfigured => _textDisplay != null;
 
     public void ShowWaiting(string message) {
         SetText($"<size=120%>音声分析システムを待っています</size>\n{message}");
     }
 
-    public void ShowLine(int textIndex, int total, string status) {
-        string body = _speechText != null ? _speechText.GetProcessedText(textIndex) : string.Empty;
+    public void ShowLine(int textIndex, int total, string body, string status) {
         SetText(
             $"<size=85%>台詞 {textIndex + 1} / {total}</size>\n" +
             $"{body}\n\n<color=#B2FF59>{status}</color>"

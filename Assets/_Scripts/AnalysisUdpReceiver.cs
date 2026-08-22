@@ -7,10 +7,25 @@ using Newtonsoft.Json.Linq;
 using UnityEngine;
 
 public sealed class AnalysisUdpReceiver : MonoBehaviour {
+    private static readonly string[] RequiredRootFields = {
+        "timestamp",
+        "sequence_id",
+        "speech_detected",
+        "feature_window_seconds",
+        "baseline_ready",
+        "arousal_score",
+        "raw_arousal_score",
+        "arousal_level",
+        "dominance_score",
+        "raw_dominance_score",
+        "dominance_level",
+        "delivery_style",
+        "relative_volume_score",
+    };
+
     [SerializeField] private int listenPort = 5005;
     [SerializeField] private DeliveryPacket latestPacket;
     [SerializeField] private string latestJson;
-    [SerializeField] private bool hasData;
     [SerializeField] private int packetsReceived;
     [SerializeField] private string lastError;
 
@@ -26,8 +41,6 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
     private double lastAcceptedTimestamp;
     private long lastAcceptedSequenceId;
 
-    public DeliveryPacket LatestPacket => latestPacket;
-    public bool HasData => hasData;
     public event Action<DeliveryPacket> DeliveryReceived;
 
     private void OnEnable() {
@@ -67,17 +80,12 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
         lastAcceptedTimestamp = packet.timestamp;
         lastAcceptedSequenceId = packet.sequence_id;
         latestJson = json;
-        hasData = true;
         packetsReceived = Volatile.Read(ref receivedCount);
         lastError = string.Empty;
         DeliveryReceived?.Invoke(packet);
     }
 
     private void OnDisable() {
-        StopReceiver();
-    }
-
-    private void OnApplicationQuit() {
         StopReceiver();
     }
 
@@ -95,22 +103,7 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
 
         try {
             JObject root = JObject.Parse(json);
-            string[] requiredRootFields = {
-                "timestamp",
-                "sequence_id",
-                "speech_detected",
-                "feature_window_seconds",
-                "baseline_ready",
-                "arousal_score",
-                "raw_arousal_score",
-                "arousal_level",
-                "dominance_score",
-                "raw_dominance_score",
-                "dominance_level",
-                "delivery_style",
-                "relative_volume_score",
-            };
-            foreach (string field in requiredRootFields) {
+            foreach (string field in RequiredRootFields) {
                 if (root.Property(field) != null) continue;
                 error = $"UDP payload is not the delivery-only VoiceAnalyzer root schema (missing '{field}').";
                 return false;

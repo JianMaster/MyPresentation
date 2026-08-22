@@ -1,18 +1,19 @@
 using System.Collections;
 using UnityEngine;
 
-public class LookAction : MonoBehaviour {
+[RequireComponent(typeof(Role))]
+public sealed class LookAction : MonoBehaviour {
     private Role _role;
     private Coroutine _lookCoroutine;
 
-    public void Init(Role role) {
-        _role = role;
+    private void Awake() {
+        _role = GetComponent<Role>();
     }
 
-    public void LookAtPlayer(float duration, float responseTime) {
+    public void LookAtPlayer(float duration) {
         StopLookingAtPlayer();
 
-        _lookCoroutine = StartCoroutine(LookAtPlayerRoutine(duration, responseTime));
+        _lookCoroutine = StartCoroutine(LookAtPlayerRoutine(duration));
     }
 
     public void StopLookingAtPlayer() {
@@ -21,7 +22,7 @@ public class LookAction : MonoBehaviour {
             _lookCoroutine = null;
         }
         if (_role != null) {
-            _role.IslookingAtPlayer = false;
+            _role.SetLookAtPlayer(false);
         }
     }
 
@@ -29,11 +30,10 @@ public class LookAction : MonoBehaviour {
         StopLookingAtPlayer();
     }
 
-    private IEnumerator LookAtPlayerRoutine(float duration, float responseTime) {
-        yield return new WaitForSeconds(Random.Range(0f, responseTime));
-        _role.IslookingAtPlayer = true;
+    private IEnumerator LookAtPlayerRoutine(float duration) {
+        _role.SetLookAtPlayer(true);
         yield return new WaitForSeconds(duration);
-        _role.IslookingAtPlayer = false;
+        _role.SetLookAtPlayer(false);
         _lookCoroutine = null;
     }
 }

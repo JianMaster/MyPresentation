@@ -2,8 +2,6 @@ using UnityEngine;
 
 [CreateAssetMenu(fileName = "DefaultScoringProfile", menuName = "Presentation/Scoring Profile")]
 public sealed class ScoringProfile : ScriptableObject {
-    public const string ResourcePath = "Scoring/DefaultScoringProfile";
-
     [Header("Versioning")]
     [SerializeField] private string _algorithmVersion = "training-v1.0.0";
     [SerializeField] private string _scriptVersion = "company-speech-v1";
@@ -56,11 +54,6 @@ public sealed class ScoringProfile : ScriptableObject {
     public int FeedbackConsecutiveMatches => _feedbackConsecutiveMatches;
     public float FeedbackMinimumDimensionScore => _feedbackMinimumDimensionScore;
     public float ApplauseThreshold => _applauseThreshold;
-
-    public static ScoringProfile LoadDefault() {
-        ScoringProfile profile = Resources.Load<ScoringProfile>(ResourcePath);
-        return profile != null ? profile : CreateInstance<ScoringProfile>();
-    }
 
     private void OnValidate() {
         _referenceSpeedCpm = Mathf.Max(1f, _referenceSpeedCpm);

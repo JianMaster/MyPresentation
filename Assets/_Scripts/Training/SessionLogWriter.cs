@@ -4,12 +4,11 @@ using Newtonsoft.Json;
 using UnityEngine;
 
 public sealed class SessionLogWriter : IDisposable {
-    private readonly string _participantId;
     private readonly ScoringProfile _profile;
     private StreamWriter _writer;
 
     public SessionLogWriter(string participantId, ScoringProfile profile) {
-        _participantId = string.IsNullOrWhiteSpace(participantId) ? "anonymous" : participantId.Trim();
+        string normalizedParticipantId = string.IsNullOrWhiteSpace(participantId) ? "anonymous" : participantId.Trim();
         _profile = profile;
         SessionId = $"{DateTime.UtcNow:yyyyMMddTHHmmssZ}-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
 
@@ -22,7 +21,7 @@ public sealed class SessionLogWriter : IDisposable {
                 event_type = "session_start",
                 recorded_at = UtcNowSeconds(),
                 session_id = SessionId,
-                participant_id = _participantId,
+                participant_id = normalizedParticipantId,
                 phase = _profile.Phase,
                 condition = _profile.Condition,
                 script_version = _profile.ScriptVersion,

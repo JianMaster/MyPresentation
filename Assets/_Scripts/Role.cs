@@ -1,22 +1,18 @@
-using System.Collections;
 using UnityEngine;
 
 [RequireComponent(typeof(Animator))]
-public class Role : MonoBehaviour {
+public sealed class Role : MonoBehaviour {
     [SerializeField] private string _roleId;
     [SerializeField] private Transform _lookTarget;
     [SerializeField] private Transform _lookPlayerTarget;
     [SerializeField] private float _lookTransitionTime = 0.25f;
 
     private bool _isLookingAtPlayer;
-    public bool IslookingAtPlayer {
-        get => _isLookingAtPlayer;
-        set => SetLookAtPlayer(value);
-    }
+    public bool IsLookingAtPlayer => _isLookingAtPlayer;
 
     private Animator _animator;
     private LookAction _lookAction;
-    private float _responseTime = 1f;
+    private NodAnimation _nodAnimation;
     private Vector3 _currentLookPosition;
     private Vector3 _lookVelocity;
     private bool _hasLookPosition;
@@ -25,9 +21,7 @@ public class Role : MonoBehaviour {
     private void Awake() {
         _animator = GetComponent<Animator>();
         _lookAction = GetComponent<LookAction>();
-        if (_lookAction != null) {
-            _lookAction.Init(this);
-        }
+        _nodAnimation = GetComponent<NodAnimation>();
     }
 
 
@@ -53,17 +47,8 @@ public class Role : MonoBehaviour {
         _animator.SetLookAtPosition(_currentLookPosition);
     }
 
-    public IEnumerator PlayNod() {
-        yield return new WaitForSeconds(Random.Range(0f, _responseTime));
-        if (TryGetComponent<NodAnimation>(out var nodAnimation)) {
-            nodAnimation.PlayNod();
-        }
-    }
-
-    public void PlayNodImmediate() {
-        if (TryGetComponent<NodAnimation>(out var nodAnimation)) {
-            nodAnimation.PlayNod();
-        }
+    public void PlayNod() {
+        _nodAnimation?.PlayNod();
     }
 
     public void PlayClap() {
@@ -72,10 +57,8 @@ public class Role : MonoBehaviour {
         }
     }
 
-    public void PromptLookAtPlayer(float duration = 10f, float responseTime = 0f) {
-        if (_lookAction != null) {
-            _lookAction.LookAtPlayer(duration, responseTime);
-        }
+    public void PromptLookAtPlayer(float duration) {
+        _lookAction?.LookAtPlayer(duration);
     }
 
     public void CancelLookPrompt() {
@@ -85,10 +68,6 @@ public class Role : MonoBehaviour {
         else {
             SetLookAtPlayer(false);
         }
-    }
-
-    public void Refresh() {
-        PromptLookAtPlayer(10f, _responseTime);
     }
 
     public void SetLookAtPlayer(bool lookAtPlayer) {

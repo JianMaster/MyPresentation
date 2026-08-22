@@ -2,15 +2,10 @@ using System;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "Texts", menuName = "Presentation/Texts")]
-public class SpeechText : ScriptableObject {
-    public const string ResourcePath = "Texts/Texts";
+public sealed class SpeechText : ScriptableObject {
     private const string EmotionColor = "#FFD54A";
     private const string SpeedColor = "#4DD0E1";
     private const string VolumeColor = "#FF7043";
-
-    public static SpeechText LoadDefault() {
-        return Resources.Load<SpeechText>(ResourcePath);
-    }
 
     [SerializeField] private TextItem[] _texts = Array.Empty<TextItem>();
     public TextItem[] Items => _texts;
@@ -58,7 +53,7 @@ public class SpeechText : ScriptableObject {
 }
 
 [Serializable]
-public class TextItem {
+public sealed class TextItem {
     public string lineId;
     [TextArea(2, 5)]
     public string text;

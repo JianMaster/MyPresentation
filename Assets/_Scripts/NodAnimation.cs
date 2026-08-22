@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [RequireComponent(typeof(Animator))]
-public class NodAnimation : MonoBehaviour {
+public sealed class NodAnimation : MonoBehaviour {
     [SerializeField] private float _nodAngle = 12f;
     [SerializeField] private float _nodDuration = 0.5f;
     [SerializeField] private int _nodCount = 1;

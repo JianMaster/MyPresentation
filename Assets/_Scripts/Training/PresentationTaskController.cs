@@ -3,38 +3,23 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 public sealed class PresentationTaskController : MonoBehaviour {
+    [Header("Scene dependencies")]
     [SerializeField] private AnalysisUdpReceiver _analysisReceiver;
-    [SerializeField] private SceneManager _sceneManager;
-    [SerializeField] private UIManager _uiManager;
+    [SerializeField] private AudienceView _audienceView;
+    [SerializeField] private UIManager _ui;
+
+    [Header("Training configuration")]
     [SerializeField] private SpeechText _speechText;
     [SerializeField] private ScoringProfile _scoringProfile;
     [SerializeField] private string _participantId = "anonymous";
 
     private readonly List<ScoringSample> _lineSamples = new List<ScoringSample>();
     private readonly List<LineEvaluationResult> _lineResults = new List<LineEvaluationResult>();
-    private PresentationTaskState _state = PresentationTaskState.WaitingForAnalyzer;
+    private PresentationTaskState _state = PresentationTaskState.WaitingForVoice;
     private AudienceFeedbackController _audience;
     private SessionLogWriter _logWriter;
     private int _lineIndex;
     private double _speechStartedAt = -1d;
-
-    public PresentationTaskState State => _state;
-
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void Bootstrap() {
-        UIManager uiManager = FindFirstObjectByType<UIManager>();
-        if (uiManager != null && uiManager.GetComponent<PresentationTaskController>() == null) {
-            uiManager.gameObject.AddComponent<PresentationTaskController>();
-        }
-    }
-
-    private void Awake() {
-        _analysisReceiver ??= FindFirstObjectByType<AnalysisUdpReceiver>();
-        _sceneManager ??= FindFirstObjectByType<SceneManager>();
-        _uiManager ??= GetComponent<UIManager>() ?? FindFirstObjectByType<UIManager>();
-        _speechText ??= _uiManager != null ? _uiManager.SpeechText : SpeechText.LoadDefault();
-        _scoringProfile ??= ScoringProfile.LoadDefault();
-    }
 
     private void OnEnable() {
         if (_analysisReceiver != null) {
@@ -43,17 +28,20 @@ public sealed class PresentationTaskController : MonoBehaviour {
     }
 
     private void Start() {
-        if (!ValidateConfiguration()) return;
-        _audience = new AudienceFeedbackController(_sceneManager);
+        if (!ValidateConfiguration()) {
+            enabled = false;
+            return;
+        }
+
+        _audience = new AudienceFeedbackController(_audienceView);
         _logWriter = new SessionLogWriter(_participantId, _scoringProfile);
-        _uiManager.ShowWaiting("VoiceAnalyzer の delivery 出力を待っています。");
+        EnterWaitingForVoice();
     }
 
     private void Update() {
-        if (_state == PresentationTaskState.PresentingLine && _audience.TryCompleteGaze()) {
-            TextItem item = CurrentItem;
+        if (_state == PresentationTaskState.RecordingLine && _audience.TryCompleteGaze()) {
             _logWriter?.LogGazeCompleted(
-                item?.lineId,
+                CurrentItem.lineId,
                 _audience.TargetRoleIndex,
                 _audience.TargetRoleId
             );
@@ -62,7 +50,8 @@ public sealed class PresentationTaskController : MonoBehaviour {
         Keyboard keyboard = Keyboard.current;
         if (keyboard == null || !keyboard.enterKey.wasPressedThisFrame) return;
 
-        if (_state == PresentationTaskState.AwaitingSpeech || _state == PresentationTaskState.PresentingLine) {
+        if (_state == PresentationTaskState.WaitingForSpeech ||
+            _state == PresentationTaskState.RecordingLine) {
             CompleteCurrentLine();
         }
     }
@@ -75,37 +64,68 @@ public sealed class PresentationTaskController : MonoBehaviour {
 
     private void OnDestroy() {
         _logWriter?.Dispose();
-        _logWriter = null;
     }
 
     private void HandleDeliveryReceived(DeliveryPacket packet) {
         if (packet == null) return;
         _logWriter?.LogDeliverySample(packet, _state, CurrentItem?.lineId);
 
-        if (_state == PresentationTaskState.WaitingForAnalyzer) {
-            if (!packet.baseline_ready) {
-                _uiManager.ShowWaiting("VoiceAnalyzer の delivery 出力を待っています。");
-                return;
-            }
-
+        if (_state == PresentationTaskState.WaitingForVoice) {
             _lineIndex = 0;
-            BeginCurrentLine(false);
+            EnterCurrentLine();
             return;
         }
 
-        double now = Time.realtimeSinceStartupAsDouble;
-        if (_state == PresentationTaskState.AwaitingSpeech && packet.speech_detected) {
-            _speechStartedAt = now;
-            _state = PresentationTaskState.PresentingLine;
-            _uiManager.ShowLine(_lineIndex, _speechText.Items.Length, "発話を検出しました。読み終わったら Enter を押してください。");
+        double receivedAt = Time.realtimeSinceStartupAsDouble;
+        if (_state == PresentationTaskState.WaitingForSpeech && packet.speech_detected) {
+            EnterRecordingLine(receivedAt);
         }
 
-        if (_state != PresentationTaskState.PresentingLine || !packet.speech_detected) return;
+        if (_state == PresentationTaskState.RecordingLine && packet.speech_detected) {
+            RegisterScoringSample(packet, receivedAt);
+        }
+    }
 
-        ScoringSample sample = ScoringSample.FromPacket(packet, now);
+    private void EnterWaitingForVoice() {
+        _state = PresentationTaskState.WaitingForVoice;
+        _ui.ShowWaiting("VoiceAnalyzer の delivery 出力を待っています。");
+    }
+
+    private void EnterCurrentLine(string retryReason = null) {
+        if (_lineIndex >= _speechText.Items.Length) {
+            CompleteSession();
+            return;
+        }
+
+        _lineSamples.Clear();
+        _speechStartedAt = -1d;
+        _state = PresentationTaskState.WaitingForSpeech;
+        _audience.BeginLine(CurrentItem, _lineIndex);
+        _logWriter?.LogLineStart(
+            CurrentItem,
+            _lineIndex,
+            _audience.TargetRoleIndex,
+            _audience.TargetRoleId
+        );
+
+        string status = string.IsNullOrEmpty(retryReason)
+            ? "読み始めてください。完了後に Enter を押してください。"
+            : $"{retryReason}\n同じ台詞をもう一度読んでください。";
+        ShowCurrentLine(status);
+    }
+
+    private void EnterRecordingLine(double startedAt) {
+        _speechStartedAt = startedAt;
+        _state = PresentationTaskState.RecordingLine;
+        ShowCurrentLine("発話を検出しました。読み終わったら Enter を押してください。");
+    }
+
+    private void RegisterScoringSample(DeliveryPacket packet, double receivedAt) {
+        ScoringSample sample = ScoringSample.FromPacket(packet, receivedAt);
         _lineSamples.Add(sample);
 
-        if (now - _speechStartedAt < packet.feature_window_seconds) return;
+        if (receivedAt - _speechStartedAt < packet.feature_window_seconds) return;
+
         float deliveryScore = PerformanceEvaluator.ScoreDelivery(
             CurrentItem.deliveryStyle,
             sample.rawArousalScore,
@@ -116,46 +136,23 @@ public sealed class PresentationTaskController : MonoBehaviour {
             sample.relativeVolumeScore,
             _scoringProfile
         );
-        bool voiceMatches = deliveryScore >= _scoringProfile.FeedbackMinimumDimensionScore &&
-                            volumeScore >= _scoringProfile.FeedbackMinimumDimensionScore;
-        _audience.RegisterVoiceMatch(voiceMatches, _scoringProfile.FeedbackConsecutiveMatches);
-    }
-
-    private void BeginCurrentLine(bool retry, string retryReason = null) {
-        if (_lineIndex >= _speechText.Items.Length) {
-            CompleteSession();
-            return;
-        }
-
-        _lineSamples.Clear();
-        _speechStartedAt = -1d;
-        _state = PresentationTaskState.AwaitingSpeech;
-        _audience.BeginLine(CurrentItem, _lineIndex);
-        _logWriter?.LogLineStart(
-            CurrentItem,
-            _lineIndex,
-            _audience.TargetRoleIndex,
-            _audience.TargetRoleId
-        );
-        string status = retry
-            ? $"{retryReason}\n同じ台詞をもう一度読んでください。"
-            : "読み始めてください。完了後に Enter を押してください。";
-        _uiManager.ShowLine(_lineIndex, _speechText.Items.Length, status);
+        bool matchesTarget = deliveryScore >= _scoringProfile.FeedbackMinimumDimensionScore &&
+                             volumeScore >= _scoringProfile.FeedbackMinimumDimensionScore;
+        _audience.RegisterVoiceMatch(matchesTarget, _scoringProfile.FeedbackConsecutiveMatches);
     }
 
     private void CompleteCurrentLine() {
-        if (_state == PresentationTaskState.AwaitingSpeech || _speechStartedAt < 0d) {
-            _uiManager.ShowLine(_lineIndex, _speechText.Items.Length, "まだ音声を検出していません。台詞を読んでください。");
+        if (_state != PresentationTaskState.RecordingLine || _speechStartedAt < 0d) {
+            ShowCurrentLine("まだ音声を検出していません。台詞を読んでください。");
             return;
         }
 
-        double now = Time.realtimeSinceStartupAsDouble;
         LineEvaluationResult result = PerformanceEvaluator.EvaluateLine(
             CurrentItem,
             _audience.TargetRoleIndex,
             _scoringProfile.ReferenceSpeedCpm,
             _speechStartedAt,
-            now,
+            Time.realtimeSinceStartupAsDouble,
             _audience.GazeCompleted,
             _lineSamples,
             _scoringProfile
@@ -163,13 +160,13 @@ public sealed class PresentationTaskController : MonoBehaviour {
         _logWriter?.LogLineResult(result);
 
         if (!result.valid) {
-            BeginCurrentLine(true, result.invalidReason);
+            EnterCurrentLine(result.invalidReason);
             return;
         }
 
         _lineResults.Add(result);
         _lineIndex++;
-        BeginCurrentLine(false);
+        EnterCurrentLine();
     }
 
     private void CompleteSession() {
@@ -177,18 +174,34 @@ public sealed class PresentationTaskController : MonoBehaviour {
         SessionEvaluationResult result = PerformanceEvaluator.EvaluateSession(_lineResults, _scoringProfile);
         _logWriter?.LogSessionResult(result);
         _audience.FinishSession(result.totalScore, _scoringProfile.ApplauseThreshold);
-        _uiManager.ShowFinalReport(result, _logWriter?.FilePath ?? string.Empty);
+
+        string logPath = _logWriter?.FilePath ?? string.Empty;
+        _logWriter?.Dispose();
+        _logWriter = null;
+        _ui.ShowFinalReport(result, logPath);
+    }
+
+    private void ShowCurrentLine(string status) {
+        _ui.ShowLine(
+            _lineIndex,
+            _speechText.Items.Length,
+            _speechText.GetProcessedText(_lineIndex),
+            status
+        );
     }
 
     private bool ValidateConfiguration() {
-        if (_analysisReceiver == null || _sceneManager == null || _uiManager == null || _speechText == null || _scoringProfile == null) {
-            _uiManager?.ShowFatalError("必要なコンポーネントまたは設定が見つかりません。");
-            enabled = false;
+        if (_ui == null || !_ui.IsConfigured) {
+            Debug.LogError("PresentationTaskController requires a configured UIManager.");
+            return false;
+        }
+        if (_analysisReceiver == null || _audienceView == null || !_audienceView.IsConfigured ||
+            _speechText == null || _scoringProfile == null) {
+            _ui.ShowFatalError("必要なシーン参照または設定が不足しています。");
             return false;
         }
         if (_speechText.Items == null || _speechText.Items.Length == 0) {
-            _uiManager.ShowFatalError("台詞データがありません。");
-            enabled = false;
+            _ui.ShowFatalError("台詞データがありません。");
             return false;
         }
         return true;

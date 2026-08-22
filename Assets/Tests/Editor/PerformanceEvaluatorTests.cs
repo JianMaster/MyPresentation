@@ -126,6 +126,36 @@ public sealed class PerformanceEvaluatorTests {
         Assert.That(error, Does.Contain("delivery-only"));
     }
 
+    [Test]
+    public void LineEvaluationDoesNotRepeatVoiceCalibration() {
+        TextItem item = CreateItem();
+        float duration = 5f;
+        float referenceCpm = PerformanceEvaluator.CountCharacters(item.text) / duration * 60f;
+        DeliveryPacket packet = new DeliveryPacket {
+            timestamp = 100d,
+            sequence_id = 1,
+            speech_detected = true,
+            feature_window_seconds = 4f,
+            baseline_ready = false,
+            raw_arousal_score = 1d,
+            raw_dominance_score = 1d,
+            relative_volume_score = 0d,
+        };
+
+        LineEvaluationResult result = PerformanceEvaluator.EvaluateLine(
+            item,
+            0,
+            referenceCpm,
+            0d,
+            duration,
+            true,
+            new List<ScoringSample> { ScoringSample.FromPacket(packet, 4d) },
+            _profile
+        );
+
+        Assert.That(result.valid, Is.True);
+    }
+
     private static TextItem CreateItem() {
         return new TextItem {
             lineId = "test-line",
@@ -139,11 +169,8 @@ public sealed class PerformanceEvaluatorTests {
     private static List<ScoringSample> CreateSamples(double receivedAt, float arousal, float dominance, float volume) {
         return new List<ScoringSample> {
             new ScoringSample {
-                sequenceId = 1,
-                sourceTimestamp = 100d,
                 receivedAt = receivedAt,
                 speechDetected = true,
-                baselineReady = true,
                 featureWindowSeconds = 4f,
                 rawArousalScore = arousal,
                 rawDominanceScore = dominance,

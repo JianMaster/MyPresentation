@@ -1,34 +1,19 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class PlayerController : MonoBehaviour
-{
+public sealed class PlayerController : MonoBehaviour {
     [SerializeField] private Transform _cameraRoot;
     [SerializeField] private float _moveSpeed = 3.5f;
     [SerializeField] private float _lookSensitivity = 0.12f;
 
     private float _pitch;
 
-    private void Awake()
-    {
-        if (_cameraRoot == null)
-        {
-            Camera mainCamera = Camera.main;
-            if (mainCamera != null)
-            {
-                _cameraRoot = mainCamera.transform;
-            }
-        }
-    }
-
-    private void Update()
-    {
+    private void Update() {
         HandleMove();
         HandleLook();
     }
 
-    private void HandleLook()
-    {
+    private void HandleLook() {
         if (_cameraRoot == null || Mouse.current == null) return;
 
         Vector2 mouseDelta = Mouse.current.delta.ReadValue() * _lookSensitivity;
@@ -38,8 +23,7 @@ public class PlayerController : MonoBehaviour
         _cameraRoot.localRotation = Quaternion.Euler(_pitch, 0f, 0f);
     }
 
-    private void HandleMove()
-    {
+    private void HandleMove() {
         Keyboard keyboard = Keyboard.current;
         if (keyboard == null) return;
 

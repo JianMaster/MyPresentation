@@ -5592,7 +5592,6 @@ MonoBehaviour:
     delivery_style:
     relative_volume_score: 0
   latestJson: 
-  hasData: 0
   packetsReceived: 0
   lastError: 
 --- !u!1 &1667420923
@@ -5606,7 +5605,7 @@ GameObject:
   - component: {fileID: 1667420925}
   - component: {fileID: 1667420924}
   m_Layer: 0
-  m_Name: SceneManager
+  m_Name: Audience
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5623,12 +5622,8 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d368e68ca41c19b42a0fccb41c52e91a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SceneManager
-  _playerCamera: {fileID: 0}
-  _highlightLayer: 6
-  _highlightDelay: 2
-  _gazeMaxDistance: 100
-  _screenCenterThreshold: 0.08
+  m_EditorClassIdentifier: Assembly-CSharp::AudienceView
+  _playerCamera: {fileID: 330585545}
   _roles:
   - {fileID: 2141328356}
   - {fileID: 1474381935}
@@ -5636,6 +5631,10 @@ MonoBehaviour:
   - {fileID: 887047173}
   - {fileID: 1834045930}
   - {fileID: 1175356509}
+  _highlightLayer: 6
+  _highlightDelay: 2
+  _gazePromptDuration: 10
+  _gazeMaxDistance: 100
 --- !u!4 &1667420925
 Transform:
   m_ObjectHideFlags: 0
@@ -5848,6 +5847,7 @@ GameObject:
   - component: {fileID: 1907562670}
   - component: {fileID: 1907562669}
   - component: {fileID: 1907562668}
+  - component: {fileID: 1907562666}
   m_Layer: 5
   m_Name: UIRoot
   m_TagString: Untagged
@@ -5867,8 +5867,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e000b3301e69a7b45822c20ffc8c6db2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UIManager
-  _speechText: {fileID: 11400000, guid: b7082c1eb1007634397cd904e378270d, type: 2}
   _textDisplay: {fileID: 2031754601}
+--- !u!114 &1907562666
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1907562667}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a601ef773ab54818b28b3285a358ba06, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::PresentationTaskController
+  _analysisReceiver: {fileID: 1609972011}
+  _audienceView: {fileID: 1667420924}
+  _ui: {fileID: 1907562668}
+  _speechText: {fileID: 11400000, guid: b7082c1eb1007634397cd904e378270d, type: 2}
+  _scoringProfile: {fileID: 11400000, guid: a801ef773ab54818b28b3285a358ba08, type: 2}
+  _participantId: anonymous
 --- !u!114 &1907562669
 MonoBehaviour:
   m_ObjectHideFlags: 0

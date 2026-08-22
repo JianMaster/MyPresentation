@@ -25,7 +25,7 @@ public static class PerformanceEvaluator {
         }
 
         List<ScoringSample> validSamples = samples
-            .Where(sample => sample != null && sample.speechDetected && sample.baselineReady)
+            .Where(sample => sample != null && sample.speechDetected)
             .Where(sample => sample.receivedAt >= speechStartedAt)
             .Where(sample => sample.receivedAt - speechStartedAt >= Math.Max(0f, sample.featureWindowSeconds))
             .ToList();

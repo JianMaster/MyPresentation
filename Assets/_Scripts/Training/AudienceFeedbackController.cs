@@ -1,8 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 
 public sealed class AudienceFeedbackController {
-    private readonly SceneManager _sceneManager;
+    private readonly AudienceView _view;
     private readonly List<Role> _roles;
     private Role _targetRole;
     private int _targetRoleIndex = -1;
@@ -10,9 +9,14 @@ public sealed class AudienceFeedbackController {
     private bool _voiceFeedbackPlayed;
     private bool _gazeCompleted;
 
-    public AudienceFeedbackController(SceneManager sceneManager) {
-        _sceneManager = sceneManager;
-        _roles = sceneManager?.Roles?.Where(role => role != null).ToList() ?? new List<Role>();
+    public AudienceFeedbackController(AudienceView view) {
+        _view = view;
+        _roles = new List<Role>();
+        if (view?.Roles == null) return;
+
+        foreach (Role role in view.Roles) {
+            if (role != null) _roles.Add(role);
+        }
     }
 
     public int TargetRoleIndex => _targetRoleIndex;
@@ -20,22 +24,22 @@ public sealed class AudienceFeedbackController {
     public bool GazeCompleted => _gazeCompleted;
 
     public void BeginLine(TextItem item, int lineIndex) {
-        _sceneManager?.CompleteGazePrompt(_targetRole);
+        _view?.CompleteGazePrompt(_targetRole);
         _voiceMatchCount = 0;
         _voiceFeedbackPlayed = false;
         _gazeCompleted = false;
         _targetRoleIndex = ResolveRoleIndex(item?.targetRoleIndex ?? -1, lineIndex);
         _targetRole = _targetRoleIndex >= 0 ? _roles[_targetRoleIndex] : null;
-        _sceneManager?.BeginGazePrompt(_targetRole);
+        _view?.BeginGazePrompt(_targetRole);
     }
 
     public bool TryCompleteGaze() {
-        if (_gazeCompleted || _targetRole == null || _sceneManager == null) return false;
-        if (!_sceneManager.IsPlayerLookingAt(_targetRole)) return false;
+        if (_gazeCompleted || _targetRole == null || _view == null) return false;
+        if (!_view.IsPlayerLookingAt(_targetRole)) return false;
 
         _gazeCompleted = true;
-        _sceneManager.CompleteGazePrompt(_targetRole);
-        _targetRole.PlayNodImmediate();
+        _view.CompleteGazePrompt(_targetRole);
+        _targetRole.PlayNod();
         return true;
     }
 
@@ -44,13 +48,13 @@ public sealed class AudienceFeedbackController {
         _voiceMatchCount = matches ? _voiceMatchCount + 1 : 0;
         if (_voiceMatchCount < requiredConsecutiveMatches) return;
 
-        Role feedbackRole = _roles.FirstOrDefault(role => role != _targetRole) ?? _targetRole;
-        feedbackRole?.PlayNodImmediate();
+        Role feedbackRole = _roles.Find(role => role != _targetRole) ?? _targetRole;
+        feedbackRole?.PlayNod();
         _voiceFeedbackPlayed = true;
     }
 
     public void FinishSession(float totalScore, float applauseThreshold) {
-        _sceneManager?.CompleteGazePrompt(_targetRole);
+        _view?.CompleteGazePrompt(_targetRole);
         if (totalScore >= applauseThreshold) {
             foreach (Role role in _roles) {
                 role.PlayClap();
@@ -60,7 +64,7 @@ public sealed class AudienceFeedbackController {
 
         if (totalScore >= 60f) {
             foreach (Role role in _roles) {
-                role.PlayNodImmediate();
+                role.PlayNod();
             }
         }
     }

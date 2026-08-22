@@ -2,19 +2,16 @@ using System;
 using System.Collections.Generic;
 
 public enum PresentationTaskState {
-    WaitingForAnalyzer,
-    AwaitingSpeech,
-    PresentingLine,
+    WaitingForVoice,
+    WaitingForSpeech,
+    RecordingLine,
     Completed
 }
 
 [Serializable]
 public sealed class ScoringSample {
-    public long sequenceId;
-    public double sourceTimestamp;
     public double receivedAt;
     public bool speechDetected;
-    public bool baselineReady;
     public float featureWindowSeconds;
     public float rawArousalScore;
     public float rawDominanceScore;
@@ -22,11 +19,8 @@ public sealed class ScoringSample {
 
     public static ScoringSample FromPacket(DeliveryPacket packet, double receivedAt) {
         return new ScoringSample {
-            sequenceId = packet?.sequence_id ?? 0,
-            sourceTimestamp = packet?.timestamp ?? 0d,
             receivedAt = receivedAt,
             speechDetected = packet?.speech_detected ?? false,
-            baselineReady = packet?.baseline_ready ?? false,
             featureWindowSeconds = packet?.feature_window_seconds ?? 0f,
             rawArousalScore = packet != null ? (float)packet.raw_arousal_score : 0f,
             rawDominanceScore = packet != null ? (float)packet.raw_dominance_score : 0f,
