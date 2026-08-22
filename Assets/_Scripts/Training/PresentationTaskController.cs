@@ -15,11 +15,8 @@ public sealed class PresentationTaskController : MonoBehaviour {
     private PresentationTaskState _state = PresentationTaskState.WaitingForAnalyzer;
     private AudienceFeedbackController _audience;
     private SessionLogWriter _logWriter;
-    private AnalysisData _latestData;
     private int _lineIndex;
-    private double _calibrationSpeechStartedAt = -1d;
     private double _speechStartedAt = -1d;
-    private float _baselineCpm;
 
     public PresentationTaskState State => _state;
 
@@ -41,7 +38,7 @@ public sealed class PresentationTaskController : MonoBehaviour {
 
     private void OnEnable() {
         if (_analysisReceiver != null) {
-            _analysisReceiver.AnalysisReceived += HandleAnalysisReceived;
+            _analysisReceiver.DeliveryReceived += HandleDeliveryReceived;
         }
     }
 
@@ -49,7 +46,7 @@ public sealed class PresentationTaskController : MonoBehaviour {
         if (!ValidateConfiguration()) return;
         _audience = new AudienceFeedbackController(_sceneManager);
         _logWriter = new SessionLogWriter(_participantId, _scoringProfile);
-        _uiManager.ShowWaiting("VoiceAnalyzer を起動してください。");
+        _uiManager.ShowWaiting("VoiceAnalyzer の delivery 出力を待っています。");
     }
 
     private void Update() {
@@ -65,17 +62,14 @@ public sealed class PresentationTaskController : MonoBehaviour {
         Keyboard keyboard = Keyboard.current;
         if (keyboard == null || !keyboard.enterKey.wasPressedThisFrame) return;
 
-        if (_state == PresentationTaskState.Calibration) {
-            CompleteCalibration();
-        }
-        else if (_state == PresentationTaskState.AwaitingSpeech || _state == PresentationTaskState.PresentingLine) {
+        if (_state == PresentationTaskState.AwaitingSpeech || _state == PresentationTaskState.PresentingLine) {
             CompleteCurrentLine();
         }
     }
 
     private void OnDisable() {
         if (_analysisReceiver != null) {
-            _analysisReceiver.AnalysisReceived -= HandleAnalysisReceived;
+            _analysisReceiver.DeliveryReceived -= HandleDeliveryReceived;
         }
     }
 
@@ -84,40 +78,34 @@ public sealed class PresentationTaskController : MonoBehaviour {
         _logWriter = null;
     }
 
-    private void HandleAnalysisReceived(AnalysisData data) {
-        if (data == null) return;
-        _latestData = data;
-        _logWriter?.LogAnalysisSample(data, _state, CurrentItem?.lineId);
+    private void HandleDeliveryReceived(DeliveryPacket packet) {
+        if (packet == null) return;
+        _logWriter?.LogDeliverySample(packet, _state, CurrentItem?.lineId);
 
         if (_state == PresentationTaskState.WaitingForAnalyzer) {
-            if (data.enabled == null || !data.enabled.delivery || data.analyzers?.delivery == null) {
-                _uiManager.ShowWaiting("語気分析（delivery）を有効にしてください。");
+            if (!packet.baseline_ready) {
+                _uiManager.ShowWaiting("VoiceAnalyzer の delivery 出力を待っています。");
                 return;
             }
-            BeginCalibration();
-        }
 
-        double now = Time.realtimeSinceStartupAsDouble;
-        if (_state == PresentationTaskState.Calibration) {
-            if (data.speech_detected && _calibrationSpeechStartedAt < 0d) {
-                _calibrationSpeechStartedAt = now;
-                _uiManager.ShowCalibration(_scoringProfile.CalibrationText, "校正中です。読み終わるまで続けてください。\n");
-            }
+            _lineIndex = 0;
+            BeginCurrentLine(false);
             return;
         }
 
-        if (_state == PresentationTaskState.AwaitingSpeech && data.speech_detected) {
+        double now = Time.realtimeSinceStartupAsDouble;
+        if (_state == PresentationTaskState.AwaitingSpeech && packet.speech_detected) {
             _speechStartedAt = now;
             _state = PresentationTaskState.PresentingLine;
             _uiManager.ShowLine(_lineIndex, _speechText.Items.Length, "発話を検出しました。読み終わったら Enter を押してください。");
         }
 
-        if (_state != PresentationTaskState.PresentingLine || !data.speech_detected) return;
+        if (_state != PresentationTaskState.PresentingLine || !packet.speech_detected) return;
 
-        ScoringSample sample = ScoringSample.FromAnalysis(data, now);
+        ScoringSample sample = ScoringSample.FromPacket(packet, now);
         _lineSamples.Add(sample);
 
-        if (now - _speechStartedAt < data.feature_window_seconds) return;
+        if (now - _speechStartedAt < packet.feature_window_seconds) return;
         float deliveryScore = PerformanceEvaluator.ScoreDelivery(
             CurrentItem.deliveryStyle,
             sample.rawArousalScore,
@@ -131,36 +119,6 @@ public sealed class PresentationTaskController : MonoBehaviour {
         bool voiceMatches = deliveryScore >= _scoringProfile.FeedbackMinimumDimensionScore &&
                             volumeScore >= _scoringProfile.FeedbackMinimumDimensionScore;
         _audience.RegisterVoiceMatch(voiceMatches, _scoringProfile.FeedbackConsecutiveMatches);
-    }
-
-    private void BeginCalibration() {
-        _state = PresentationTaskState.Calibration;
-        _calibrationSpeechStartedAt = -1d;
-        _uiManager.ShowCalibration(_scoringProfile.CalibrationText, "普段の声で読み始めてください。");
-    }
-
-    private void CompleteCalibration() {
-        double now = Time.realtimeSinceStartupAsDouble;
-        if (_calibrationSpeechStartedAt < 0d) {
-            _uiManager.ShowCalibration(_scoringProfile.CalibrationText, "音声を検出できません。読み始めてください。");
-            return;
-        }
-        if (_latestData?.analyzers?.delivery?.baseline_ready != true) {
-            _uiManager.ShowCalibration(_scoringProfile.CalibrationText, "個人基準の作成中です。もう少し読み続けてください。");
-            return;
-        }
-
-        float duration = (float)(now - _calibrationSpeechStartedAt);
-        if (duration < _scoringProfile.MinimumSpeechSeconds) {
-            _uiManager.ShowCalibration(_scoringProfile.CalibrationText, "校正時間が短すぎます。最初から読み直してください。");
-            _calibrationSpeechStartedAt = -1d;
-            return;
-        }
-
-        _baselineCpm = PerformanceEvaluator.CountCharacters(_scoringProfile.CalibrationText) / duration * 60f;
-        _logWriter?.LogCalibration(_baselineCpm, duration);
-        _lineIndex = 0;
-        BeginCurrentLine(false);
     }
 
     private void BeginCurrentLine(bool retry, string retryReason = null) {
@@ -181,7 +139,7 @@ public sealed class PresentationTaskController : MonoBehaviour {
         );
         string status = retry
             ? $"{retryReason}\n同じ台詞をもう一度読んでください。"
-            : "読み始めてください。完了後に Enter を押します。";
+            : "読み始めてください。完了後に Enter を押してください。";
         _uiManager.ShowLine(_lineIndex, _speechText.Items.Length, status);
     }
 
@@ -195,7 +153,7 @@ public sealed class PresentationTaskController : MonoBehaviour {
         LineEvaluationResult result = PerformanceEvaluator.EvaluateLine(
             CurrentItem,
             _audience.TargetRoleIndex,
-            _baselineCpm,
+            _scoringProfile.ReferenceSpeedCpm,
             _speechStartedAt,
             now,
             _audience.GazeCompleted,

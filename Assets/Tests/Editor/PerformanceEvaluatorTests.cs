@@ -85,20 +85,45 @@ public sealed class PerformanceEvaluatorTests {
     }
 
     [Test]
-    public void UdpJsonContractDeserializesTrainingFields() {
+    public void DeliveryRootUdpContractDeserializesTrainingFields() {
+        const string json = "{\"timestamp\":123.5,\"sequence_id\":7,\"speech_detected\":true," +
+                            "\"feature_window_seconds\":4,\"baseline_ready\":true," +
+                            "\"arousal_score\":0.2,\"arousal_level\":\"low\"," +
+                            "\"raw_arousal_score\":0.4,\"raw_dominance_score\":-0.2," +
+                            "\"dominance_score\":-0.1,\"dominance_level\":\"low\"," +
+                            "\"delivery_style\":\"subdued_hesitant\"," +
+                            "\"relative_volume_score\":0.3}";
+
+        bool parsed = AnalysisUdpReceiver.TryParseDeliveryPacket(
+            json,
+            out DeliveryPacket packet,
+            out string error
+        );
+
+        Assert.That(parsed, Is.True, error);
+        Assert.That(packet.sequence_id, Is.EqualTo(7));
+        Assert.That(packet.speech_detected, Is.True);
+        Assert.That(packet.baseline_ready, Is.True);
+        Assert.That(packet.raw_arousal_score, Is.EqualTo(0.4d).Within(0.0001d));
+        Assert.That(packet.relative_volume_score, Is.EqualTo(0.3d).Within(0.0001d));
+    }
+
+    [Test]
+    public void LegacyAnalyzerEnvelopeIsRejected() {
         const string json = "{\"timestamp\":123.5,\"sequence_id\":7,\"speech_detected\":true," +
                             "\"feature_window_seconds\":4,\"enabled\":{\"delivery\":true}," +
                             "\"analyzers\":{\"delivery\":{\"baseline_ready\":true," +
-                            "\"raw_arousal_score\":0.4,\"raw_dominance_score\":-0.2," +
-                            "\"relative_volume_score\":0.3}}}";
+                            "\"delivery_style\":\"calm_confident\"}}}";
 
-        AnalysisData data = JsonUtility.FromJson<AnalysisData>(json);
+        bool parsed = AnalysisUdpReceiver.TryParseDeliveryPacket(
+            json,
+            out DeliveryPacket packet,
+            out string error
+        );
 
-        Assert.That(data.sequence_id, Is.EqualTo(7));
-        Assert.That(data.speech_detected, Is.True);
-        Assert.That(data.enabled.delivery, Is.True);
-        Assert.That(data.analyzers.delivery.raw_arousal_score, Is.EqualTo(0.4d).Within(0.0001d));
-        Assert.That(data.analyzers.delivery.relative_volume_score, Is.EqualTo(0.3d).Within(0.0001d));
+        Assert.That(parsed, Is.False);
+        Assert.That(packet, Is.Null);
+        Assert.That(error, Does.Contain("delivery-only"));
     }
 
     private static TextItem CreateItem() {

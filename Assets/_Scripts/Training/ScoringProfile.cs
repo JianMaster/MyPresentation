@@ -16,7 +16,8 @@ public sealed class ScoringProfile : ScriptableObject {
     [SerializeField, Min(0f)] private float _volumeWeight = 0.25f;
     [SerializeField, Min(0f)] private float _gazeWeight = 0.25f;
 
-    [Header("Personal baseline targets")]
+    [Header("Speed and volume targets")]
+    [SerializeField, Min(1f)] private float _referenceSpeedCpm = 300f;
     [SerializeField] private float _slowSpeedRatio = 0.8f;
     [SerializeField] private float _normalSpeedRatio = 1f;
     [SerializeField] private float _fastSpeedRatio = 1.2f;
@@ -33,11 +34,6 @@ public sealed class ScoringProfile : ScriptableObject {
     [SerializeField, Range(0f, 100f)] private float _feedbackMinimumDimensionScore = 60f;
     [SerializeField, Range(0f, 100f)] private float _applauseThreshold = 80f;
 
-    [Header("Calibration")]
-    [SerializeField, TextArea(3, 6)] private string _calibrationText =
-        "皆さん、こんにちは。今日はこのテーマについて、私が考えていることを簡単にお話しします。\n" +
-        "まず全体の流れを確認してから、具体的な内容を順番に説明します。どうぞよろしくお願いします。";
-
     public string AlgorithmVersion => _algorithmVersion;
     public string ScriptVersion => _scriptVersion;
     public string Phase => _phase;
@@ -46,6 +42,7 @@ public sealed class ScoringProfile : ScriptableObject {
     public float SpeedWeight => _speedWeight;
     public float VolumeWeight => _volumeWeight;
     public float GazeWeight => _gazeWeight;
+    public float ReferenceSpeedCpm => _referenceSpeedCpm;
     public float SlowSpeedRatio => _slowSpeedRatio;
     public float NormalSpeedRatio => _normalSpeedRatio;
     public float FastSpeedRatio => _fastSpeedRatio;
@@ -59,7 +56,6 @@ public sealed class ScoringProfile : ScriptableObject {
     public int FeedbackConsecutiveMatches => _feedbackConsecutiveMatches;
     public float FeedbackMinimumDimensionScore => _feedbackMinimumDimensionScore;
     public float ApplauseThreshold => _applauseThreshold;
-    public string CalibrationText => _calibrationText;
 
     public static ScoringProfile LoadDefault() {
         ScoringProfile profile = Resources.Load<ScoringProfile>(ResourcePath);
@@ -67,6 +63,7 @@ public sealed class ScoringProfile : ScriptableObject {
     }
 
     private void OnValidate() {
+        _referenceSpeedCpm = Mathf.Max(1f, _referenceSpeedCpm);
         _speedFalloff = Mathf.Max(0.01f, _speedFalloff);
         _volumeFalloff = Mathf.Max(0.01f, _volumeFalloff);
         _minimumSpeechSeconds = Mathf.Max(0.1f, _minimumSpeechSeconds);

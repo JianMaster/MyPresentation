@@ -87,7 +87,7 @@ public class Role : MonoBehaviour {
         }
     }
 
-    public void Refresh(AnalysisData analysisData) {
+    public void Refresh() {
         PromptLookAtPlayer(10f, _responseTime);
     }
 

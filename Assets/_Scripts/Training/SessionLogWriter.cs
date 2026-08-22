@@ -27,6 +27,8 @@ public sealed class SessionLogWriter : IDisposable {
                 condition = _profile.Condition,
                 script_version = _profile.ScriptVersion,
                 algorithm_version = _profile.AlgorithmVersion,
+                udp_contract = "delivery-root-v1",
+                reference_speed_cpm = _profile.ReferenceSpeedCpm,
             });
         }
         catch (Exception exception) {
@@ -37,62 +39,30 @@ public sealed class SessionLogWriter : IDisposable {
     public string SessionId { get; }
     public string FilePath { get; private set; } = string.Empty;
 
-    public void LogAnalysisSample(AnalysisData data, PresentationTaskState state, string lineId) {
-        if (data == null) return;
-        DeliveryAnalysis delivery = data.analyzers?.delivery;
-        ProsodyAnalysis prosody = data.analyzers?.prosody;
-        PronunciationAnalysis pronunciation = data.analyzers?.pronunciation;
-        AsrAnalysis asr = data.analyzers?.asr;
+    public void LogDeliverySample(DeliveryPacket packet, PresentationTaskState state, string lineId) {
+        if (packet == null) return;
 
         Append(new {
-            event_type = "analysis_sample",
+            event_type = "delivery_sample",
             recorded_at = UtcNowSeconds(),
             session_id = SessionId,
             task_state = state.ToString(),
             line_id = lineId ?? string.Empty,
-            source_timestamp = data.timestamp,
-            sequence_id = data.sequence_id,
-            speech_detected = data.speech_detected,
-            delivery = delivery == null ? null : new {
-                delivery.baseline_ready,
-                delivery.arousal_score,
-                delivery.raw_arousal_score,
-                delivery.dominance_score,
-                delivery.raw_dominance_score,
-                delivery.delivery_style,
-                delivery.relative_volume_score,
+            source_timestamp = packet.timestamp,
+            sequence_id = packet.sequence_id,
+            speech_detected = packet.speech_detected,
+            feature_window_seconds = packet.feature_window_seconds,
+            delivery = new {
+                packet.baseline_ready,
+                packet.arousal_score,
+                packet.raw_arousal_score,
+                packet.arousal_level,
+                packet.dominance_score,
+                packet.raw_dominance_score,
+                packet.dominance_level,
+                packet.delivery_style,
+                packet.relative_volume_score,
             },
-            prosody = prosody == null ? null : new {
-                prosody.mean_pitch_st,
-                prosody.pitch_range_st,
-                prosody.pitch_variation,
-                prosody.mean_loudness,
-                prosody.loudness_range,
-                prosody.loudness_variation,
-                prosody.sound_level_db,
-            },
-            pronunciation = pronunciation == null ? null : new {
-                pronunciation.hnr_db,
-                pronunciation.jitter,
-                pronunciation.shimmer_db,
-                pronunciation.spectral_flux,
-            },
-            asr_metrics = asr == null ? null : new {
-                asr.status,
-                asr.speech_rate_cpm,
-                asr.pause_count,
-                asr.speaking_ratio,
-            },
-        });
-    }
-
-    public void LogCalibration(float baselineCpm, float durationSeconds) {
-        Append(new {
-            event_type = "calibration_completed",
-            recorded_at = UtcNowSeconds(),
-            session_id = SessionId,
-            baseline_cpm = baselineCpm,
-            duration_seconds = durationSeconds,
         });
     }
 

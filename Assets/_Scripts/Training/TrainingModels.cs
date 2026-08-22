@@ -3,7 +3,6 @@ using System.Collections.Generic;
 
 public enum PresentationTaskState {
     WaitingForAnalyzer,
-    Calibration,
     AwaitingSpeech,
     PresentingLine,
     Completed
@@ -21,18 +20,17 @@ public sealed class ScoringSample {
     public float rawDominanceScore;
     public float relativeVolumeScore;
 
-    public static ScoringSample FromAnalysis(AnalysisData data, double receivedAt) {
-        DeliveryAnalysis delivery = data?.analyzers?.delivery;
+    public static ScoringSample FromPacket(DeliveryPacket packet, double receivedAt) {
         return new ScoringSample {
-            sequenceId = data?.sequence_id ?? 0,
-            sourceTimestamp = data?.timestamp ?? 0d,
+            sequenceId = packet?.sequence_id ?? 0,
+            sourceTimestamp = packet?.timestamp ?? 0d,
             receivedAt = receivedAt,
-            speechDetected = data?.speech_detected ?? false,
-            baselineReady = delivery?.baseline_ready ?? false,
-            featureWindowSeconds = data != null ? data.feature_window_seconds : 0f,
-            rawArousalScore = delivery != null ? (float)delivery.raw_arousal_score : 0f,
-            rawDominanceScore = delivery != null ? (float)delivery.raw_dominance_score : 0f,
-            relativeVolumeScore = delivery != null ? (float)delivery.relative_volume_score : 0f,
+            speechDetected = packet?.speech_detected ?? false,
+            baselineReady = packet?.baseline_ready ?? false,
+            featureWindowSeconds = packet?.feature_window_seconds ?? 0f,
+            rawArousalScore = packet != null ? (float)packet.raw_arousal_score : 0f,
+            rawDominanceScore = packet != null ? (float)packet.raw_dominance_score : 0f,
+            relativeVolumeScore = packet != null ? (float)packet.relative_volume_score : 0f,
         };
     }
 }

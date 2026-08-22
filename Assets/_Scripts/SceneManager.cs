@@ -3,7 +3,6 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class SceneManager : MonoBehaviour {
-    [SerializeField] private AnalysisUdpReceiver _analysisUdpReceiver;
     [SerializeField] private Camera _playerCamera;
     [SerializeField] private int _highlightLayer = 6;
     [SerializeField] private float _highlightDelay = 2f;
@@ -24,9 +23,6 @@ public class SceneManager : MonoBehaviour {
     }
 
     private void Update() {
-        // if (_analysisUdpReceiver == null || !_analysisUdpReceiver.HasData) return;
-
-        AnalysisData analysisData = _analysisUdpReceiver != null ? _analysisUdpReceiver.LatestData : null;
         Keyboard keyboard = Keyboard.current;
 
         foreach (Role role in _roles) {
@@ -40,7 +36,7 @@ public class SceneManager : MonoBehaviour {
         }
         if (keyboard != null && keyboard.qKey.wasPressedThisFrame) {
             if (_roles == null || _roles.Count == 0) return;
-            _roles[Random.Range(0, _roles.Count)].Refresh(analysisData);
+            _roles[Random.Range(0, _roles.Count)].Refresh();
         }
     }
 

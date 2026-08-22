@@ -20,14 +20,6 @@ public class UIManager : MonoBehaviour {
         SetText($"<size=120%>音声分析システムを待っています</size>\n{message}");
     }
 
-    public void ShowCalibration(string calibrationText, string status) {
-        SetText(
-            $"<size=120%><b>個人基準の校正</b></size>\n" +
-            $"普段の発表時の声で読み、終わったら Enter を押してください。\n\n" +
-            $"{calibrationText}\n\n<color=#FFD54A>{status}</color>"
-        );
-    }
-
     public void ShowLine(int textIndex, int total, string status) {
         string body = _speechText != null ? _speechText.GetProcessedText(textIndex) : string.Empty;
         SetText(

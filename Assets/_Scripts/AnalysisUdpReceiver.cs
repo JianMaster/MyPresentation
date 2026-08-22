@@ -3,12 +3,12 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using Newtonsoft.Json.Linq;
 using UnityEngine;
 
-public class AnalysisUdpReceiver : MonoBehaviour
-{
+public sealed class AnalysisUdpReceiver : MonoBehaviour {
     [SerializeField] private int listenPort = 5005;
-    [SerializeField] private AnalysisData latestData;
+    [SerializeField] private DeliveryPacket latestPacket;
     [SerializeField] private string latestJson;
     [SerializeField] private bool hasData;
     [SerializeField] private int packetsReceived;
@@ -24,138 +24,159 @@ public class AnalysisUdpReceiver : MonoBehaviour
     private volatile bool isRunning;
     private int receivedCount;
     private double lastAcceptedTimestamp;
+    private long lastAcceptedSequenceId;
 
-    public AnalysisData LatestData => latestData;
+    public DeliveryPacket LatestPacket => latestPacket;
     public bool HasData => hasData;
-    public event Action<AnalysisData> AnalysisReceived;
+    public event Action<DeliveryPacket> DeliveryReceived;
 
-    private void OnEnable()
-    {
+    private void OnEnable() {
         StartReceiver();
     }
 
-    private void Update()
-    {
+    private void Update() {
         string json = null;
         string error = null;
 
-        lock (pendingLock)
-        {
-            if (hasPendingJson)
-            {
+        lock (pendingLock) {
+            if (hasPendingJson) {
                 json = pendingJson;
                 pendingJson = null;
                 hasPendingJson = false;
             }
 
-            if (hasPendingError)
-            {
+            if (hasPendingError) {
                 error = pendingError;
                 pendingError = null;
                 hasPendingError = false;
             }
         }
 
-        if (!string.IsNullOrEmpty(error))
-        {
+        if (!string.IsNullOrEmpty(error)) {
             lastError = error;
         }
-
         if (string.IsNullOrEmpty(json)) return;
 
-        try
-        {
-            AnalysisData parsedData = JsonUtility.FromJson<AnalysisData>(json);
-            if (parsedData == null) return;
-            if (parsedData.timestamp > 0d && parsedData.timestamp <= lastAcceptedTimestamp) return;
+        if (!TryParseDeliveryPacket(json, out DeliveryPacket packet, out string parseError)) {
+            lastError = parseError;
+            return;
+        }
+        if (packet.timestamp <= lastAcceptedTimestamp && packet.sequence_id <= lastAcceptedSequenceId) return;
 
-            latestData = parsedData;
-            lastAcceptedTimestamp = parsedData.timestamp;
-            latestJson = json;
-            hasData = true;
-            packetsReceived = Volatile.Read(ref receivedCount);
-            lastError = string.Empty;
-            Debug.Log($"Received AnalysisData: {JsonUtility.ToJson(latestData)}");
-            AnalysisReceived?.Invoke(latestData);
-        }
-        catch (Exception exception)
-        {
-            lastError = exception.Message;
-        }
+        latestPacket = packet;
+        lastAcceptedTimestamp = packet.timestamp;
+        lastAcceptedSequenceId = packet.sequence_id;
+        latestJson = json;
+        hasData = true;
+        packetsReceived = Volatile.Read(ref receivedCount);
+        lastError = string.Empty;
+        DeliveryReceived?.Invoke(packet);
     }
 
-    private void OnDisable()
-    {
+    private void OnDisable() {
         StopReceiver();
     }
 
-    private void OnApplicationQuit()
-    {
+    private void OnApplicationQuit() {
         StopReceiver();
     }
 
-    private void OnValidate()
-    {
+    private void OnValidate() {
         listenPort = Mathf.Clamp(listenPort, 1, 65535);
     }
 
-    private void StartReceiver()
-    {
+    public static bool TryParseDeliveryPacket(string json, out DeliveryPacket packet, out string error) {
+        packet = null;
+        error = string.Empty;
+        if (string.IsNullOrWhiteSpace(json)) {
+            error = "Received an empty UDP payload.";
+            return false;
+        }
+
+        try {
+            JObject root = JObject.Parse(json);
+            string[] requiredRootFields = {
+                "timestamp",
+                "sequence_id",
+                "speech_detected",
+                "feature_window_seconds",
+                "baseline_ready",
+                "arousal_score",
+                "raw_arousal_score",
+                "arousal_level",
+                "dominance_score",
+                "raw_dominance_score",
+                "dominance_level",
+                "delivery_style",
+                "relative_volume_score",
+            };
+            foreach (string field in requiredRootFields) {
+                if (root.Property(field) != null) continue;
+                error = $"UDP payload is not the delivery-only VoiceAnalyzer root schema (missing '{field}').";
+                return false;
+            }
+
+            packet = JsonUtility.FromJson<DeliveryPacket>(json);
+        }
+        catch (Exception exception) {
+            error = exception.Message;
+            return false;
+        }
+
+        if (packet == null || packet.timestamp <= 0d || packet.sequence_id <= 0 ||
+            packet.feature_window_seconds <= 0f || string.IsNullOrWhiteSpace(packet.delivery_style)) {
+            packet = null;
+            error = "UDP payload is not the delivery-only VoiceAnalyzer root schema.";
+            return false;
+        }
+        return true;
+    }
+
+    private void StartReceiver() {
         if (isRunning) return;
 
-        try
-        {
+        try {
             udpClient = new UdpClient(AddressFamily.InterNetwork);
             udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             udpClient.Client.Bind(new IPEndPoint(IPAddress.Loopback, listenPort));
 
             isRunning = true;
-            receiveThread = new Thread(ReceiveLoop)
-            {
+            receiveThread = new Thread(ReceiveLoop) {
                 IsBackground = true,
-                Name = "Analysis UDP Receiver"
+                Name = "Delivery UDP Receiver"
             };
             receiveThread.Start();
             lastError = string.Empty;
         }
-        catch (Exception exception)
-        {
+        catch (Exception exception) {
             lastError = exception.Message;
             StopReceiver();
         }
     }
 
-    private void ReceiveLoop()
-    {
+    private void ReceiveLoop() {
         IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
 
-        while (isRunning)
-        {
-            try
-            {
+        while (isRunning) {
+            try {
                 byte[] bytes = udpClient.Receive(ref remoteEndPoint);
                 string json = Encoding.UTF8.GetString(bytes);
 
-                lock (pendingLock)
-                {
+                lock (pendingLock) {
                     pendingJson = json;
                     hasPendingJson = true;
                 }
 
                 Interlocked.Increment(ref receivedCount);
             }
-            catch (ObjectDisposedException)
-            {
+            catch (ObjectDisposedException) {
                 break;
             }
-            catch (SocketException)
-            {
+            catch (SocketException) {
                 if (isRunning) break;
             }
-            catch (Exception exception)
-            {
-                lock (pendingLock)
-                {
+            catch (Exception exception) {
+                lock (pendingLock) {
                     pendingError = exception.Message;
                     hasPendingError = true;
                 }
@@ -163,18 +184,15 @@ public class AnalysisUdpReceiver : MonoBehaviour
         }
     }
 
-    private void StopReceiver()
-    {
+    private void StopReceiver() {
         isRunning = false;
 
-        if (udpClient != null)
-        {
+        if (udpClient != null) {
             udpClient.Close();
             udpClient = null;
         }
 
-        if (receiveThread != null)
-        {
+        if (receiveThread != null) {
             receiveThread.Join(200);
             receiveThread = null;
         }
@@ -182,61 +200,11 @@ public class AnalysisUdpReceiver : MonoBehaviour
 }
 
 [Serializable]
-public class AnalysisData
-{
+public sealed class DeliveryPacket {
     public double timestamp;
     public long sequence_id;
     public bool speech_detected;
-    public int sample_rate;
-    public int block_seconds;
-    public int feature_window_seconds;
-    public int asr_window_seconds;
-    public AnalysisEnabled enabled;
-    public AnalysisAnalyzers analyzers;
-}
-
-[Serializable]
-public class AnalysisEnabled
-{
-    public bool pronunciation;
-    public bool prosody;
-    public bool delivery;
-    public bool asr;
-}
-
-[Serializable]
-public class AnalysisAnalyzers
-{
-    public PronunciationAnalysis pronunciation;
-    public ProsodyAnalysis prosody;
-    public DeliveryAnalysis delivery;
-    public AsrAnalysis asr;
-}
-
-[Serializable]
-public class PronunciationAnalysis
-{
-    public double hnr_db;
-    public double jitter;
-    public double shimmer_db;
-    public double spectral_flux;
-}
-
-[Serializable]
-public class ProsodyAnalysis
-{
-    public double mean_pitch_st;
-    public double pitch_range_st;
-    public double pitch_variation;
-    public double mean_loudness;
-    public double loudness_range;
-    public double loudness_variation;
-    public double sound_level_db;
-}
-
-[Serializable]
-public class DeliveryAnalysis
-{
+    public float feature_window_seconds;
     public bool baseline_ready;
     public double arousal_score;
     public double raw_arousal_score;
@@ -246,17 +214,4 @@ public class DeliveryAnalysis
     public string dominance_level;
     public string delivery_style;
     public double relative_volume_score;
-}
-
-[Serializable]
-public class AsrAnalysis
-{
-    public string status;
-    public string transcript;
-    public double speech_rate_cpm;
-    public int pause_count;
-    public double speaking_ratio;
-    public double available_seconds;
-    public int required_seconds;
-    public string error;
 }

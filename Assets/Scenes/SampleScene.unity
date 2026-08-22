@@ -5577,39 +5577,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnalysisUdpReceiver
   listenPort: 5005
-  latestData:
+  latestPacket:
     timestamp: 0
-    sample_rate: 0
-    block_seconds: 0
+    sequence_id: 0
+    speech_detected: 0
     feature_window_seconds: 0
-    asr_window_seconds: 0
-    enabled:
-      pronunciation: 0
-      prosody: 0
-      asr: 0
-    analyzers:
-      pronunciation:
-        hnr_db: 0
-        jitter: 0
-        shimmer_db: 0
-        spectral_flux: 0
-      prosody:
-        mean_pitch_st: 0
-        pitch_range_st: 0
-        pitch_variation: 0
-        mean_loudness: 0
-        loudness_range: 0
-        loudness_variation: 0
-        sound_level_db: 0
-      asr:
-        status: 
-        transcript: 
-        speech_rate_cpm: 0
-        pause_count: 0
-        speaking_ratio: 0
-        available_seconds: 0
-        required_seconds: 0
-        error: 
+    baseline_ready: 0
+    arousal_score: 0
+    raw_arousal_score: 0
+    arousal_level:
+    dominance_score: 0
+    raw_dominance_score: 0
+    dominance_level:
+    delivery_style:
+    relative_volume_score: 0
   latestJson: 
   hasData: 0
   packetsReceived: 0
@@ -5643,7 +5624,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d368e68ca41c19b42a0fccb41c52e91a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SceneManager
-  _analysisUdpReceiver: {fileID: 1609972011}
   _playerCamera: {fileID: 0}
   _highlightLayer: 6
   _highlightDelay: 2

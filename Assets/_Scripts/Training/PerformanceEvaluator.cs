@@ -9,7 +9,7 @@ public static class PerformanceEvaluator {
     public static LineEvaluationResult EvaluateLine(
         TextItem item,
         int targetRoleIndex,
-        float baselineCpm,
+        float referenceCpm,
         double speechStartedAt,
         double endedAt,
         bool gazeCompleted,
@@ -41,8 +41,8 @@ public static class PerformanceEvaluator {
             return result;
         }
 
-        if (baselineCpm <= 0f) {
-            result.invalidReason = "話速の個人基準がありません";
+        if (referenceCpm <= 0f) {
+            result.invalidReason = "話速の基準値が設定されていません";
             return result;
         }
 
@@ -51,7 +51,7 @@ public static class PerformanceEvaluator {
         result.meanRawDominance = validSamples.Average(sample => sample.rawDominanceScore);
         result.meanRelativeVolume = validSamples.Average(sample => sample.relativeVolumeScore);
         result.actualCpm = CountCharacters(item.text) / result.speechSeconds * 60f;
-        result.speedRatio = result.actualCpm / baselineCpm;
+        result.speedRatio = result.actualCpm / referenceCpm;
         result.deliveryScore = ScoreDelivery(
             item.deliveryStyle,
             result.meanRawArousal,
@@ -175,7 +175,7 @@ public static class PerformanceEvaluator {
     private static string AdviceFor(string dimension) {
         return dimension switch {
             "語気" => "表示された語気の方向を意識し、声の勢いと安定感をより明確に変えてみましょう。",
-            "話速" => "個人基準との差を確認し、句読点で間を取りながら目標の速さを保ちましょう。",
+            "話速" => "基準話速との差を確認し、句読点で間を取りながら目標の速さを保ちましょう。",
             "音量" => "マイクとの距離を一定にし、表示された大小を意識して声量を調整しましょう。",
             _ => "視線対象を早めに確認し、台詞の途中で一度は相手の顔を見るようにしましょう。",
         };

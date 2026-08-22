@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a101ef773ab54818b28b3285a358ba01, type: 3}
   m_Name: DefaultScoringProfile
   m_EditorClassIdentifier: Assembly-CSharp::ScoringProfile
-  _algorithmVersion: training-v1.0.0
+  _algorithmVersion: training-v1.1.0-delivery-root
   _scriptVersion: company-speech-v1
   _phase: training
   _condition: implicit-positive-feedback
@@ -20,6 +20,7 @@ MonoBehaviour:
   _speedWeight: 0.25
   _volumeWeight: 0.25
   _gazeWeight: 0.25
+  _referenceSpeedCpm: 300
   _slowSpeedRatio: 0.8
   _normalSpeedRatio: 1
   _fastSpeedRatio: 1.2
@@ -33,6 +34,3 @@ MonoBehaviour:
   _feedbackConsecutiveMatches: 2
   _feedbackMinimumDimensionScore: 60
   _applauseThreshold: 80
-  _calibrationText: |-
-    皆さん、こんにちは。今日はこのテーマについて、私が考えていることを簡単にお話しします。
-    まず全体の流れを確認してから、具体的な内容を順番に説明します。どうぞよろしくお願いします。
