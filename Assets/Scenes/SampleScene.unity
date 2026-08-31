@@ -5582,15 +5582,12 @@ MonoBehaviour:
     sequence_id: 0
     speech_detected: 0
     feature_window_seconds: 0
-    baseline_ready: 0
-    arousal_score: 0
-    raw_arousal_score: 0
-    arousal_level:
-    dominance_score: 0
-    raw_dominance_score: 0
-    dominance_level:
-    delivery_style:
-    relative_volume_score: 0
+    arousal: 0
+    valence: 0
+    speech_rate_value: 0
+    speech_rate_level:
+    volume_value: 0
+    volume_level:
   latestJson: 
   packetsReceived: 0
   lastError: 

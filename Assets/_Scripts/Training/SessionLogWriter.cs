@@ -26,8 +26,9 @@ public sealed class SessionLogWriter : IDisposable {
                 condition = _profile.Condition,
                 script_version = _profile.ScriptVersion,
                 algorithm_version = _profile.AlgorithmVersion,
-                udp_contract = "delivery-root-v1",
-                reference_speed_cpm = _profile.ReferenceSpeedCpm,
+                udp_contract = "av-prosody-root-v2",
+                speech_rate_medium_band = new[] { _profile.SpeechRateMediumMin, _profile.SpeechRateMediumMax },
+                volume_medium_band = new[] { _profile.VolumeMediumMin, _profile.VolumeMediumMax },
             });
         }
         catch (Exception exception) {
@@ -38,11 +39,11 @@ public sealed class SessionLogWriter : IDisposable {
     public string SessionId { get; }
     public string FilePath { get; private set; } = string.Empty;
 
-    public void LogDeliverySample(DeliveryPacket packet, PresentationTaskState state, string lineId) {
+    public void LogVoiceAnalysisSample(VoiceAnalysisPacket packet, PresentationTaskState state, string lineId) {
         if (packet == null) return;
 
         Append(new {
-            event_type = "delivery_sample",
+            event_type = "voice_analysis_sample",
             recorded_at = UtcNowSeconds(),
             session_id = SessionId,
             task_state = state.ToString(),
@@ -51,16 +52,13 @@ public sealed class SessionLogWriter : IDisposable {
             sequence_id = packet.sequence_id,
             speech_detected = packet.speech_detected,
             feature_window_seconds = packet.feature_window_seconds,
-            delivery = new {
-                packet.baseline_ready,
-                packet.arousal_score,
-                packet.raw_arousal_score,
-                packet.arousal_level,
-                packet.dominance_score,
-                packet.raw_dominance_score,
-                packet.dominance_level,
-                packet.delivery_style,
-                packet.relative_volume_score,
+            voice_analysis = new {
+                arousal = packet.speech_detected ? (double?)packet.arousal : null,
+                valence = packet.speech_detected ? (double?)packet.valence : null,
+                packet.speech_rate_value,
+                packet.speech_rate_level,
+                packet.volume_value,
+                packet.volume_level,
             },
         });
     }

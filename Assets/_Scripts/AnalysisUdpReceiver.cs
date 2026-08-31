@@ -12,19 +12,16 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
         "sequence_id",
         "speech_detected",
         "feature_window_seconds",
-        "baseline_ready",
-        "arousal_score",
-        "raw_arousal_score",
-        "arousal_level",
-        "dominance_score",
-        "raw_dominance_score",
-        "dominance_level",
-        "delivery_style",
-        "relative_volume_score",
+        "arousal",
+        "valence",
+        "speech_rate_value",
+        "speech_rate_level",
+        "volume_value",
+        "volume_level",
     };
 
     [SerializeField] private int listenPort = 5005;
-    [SerializeField] private DeliveryPacket latestPacket;
+    [SerializeField] private VoiceAnalysisPacket latestPacket;
     [SerializeField] private string latestJson;
     [SerializeField] private int packetsReceived;
     [SerializeField] private string lastError;
@@ -41,7 +38,7 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
     private double lastAcceptedTimestamp;
     private long lastAcceptedSequenceId;
 
-    public event Action<DeliveryPacket> DeliveryReceived;
+    public event Action<VoiceAnalysisPacket> AnalysisReceived;
 
     private void OnEnable() {
         StartReceiver();
@@ -70,7 +67,7 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
         }
         if (string.IsNullOrEmpty(json)) return;
 
-        if (!TryParseDeliveryPacket(json, out DeliveryPacket packet, out string parseError)) {
+        if (!TryParseAnalysisPacket(json, out VoiceAnalysisPacket packet, out string parseError)) {
             lastError = parseError;
             return;
         }
@@ -82,7 +79,7 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
         latestJson = json;
         packetsReceived = Volatile.Read(ref receivedCount);
         lastError = string.Empty;
-        DeliveryReceived?.Invoke(packet);
+        AnalysisReceived?.Invoke(packet);
     }
 
     private void OnDisable() {
@@ -93,7 +90,7 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
         listenPort = Mathf.Clamp(listenPort, 1, 65535);
     }
 
-    public static bool TryParseDeliveryPacket(string json, out DeliveryPacket packet, out string error) {
+    public static bool TryParseAnalysisPacket(string json, out VoiceAnalysisPacket packet, out string error) {
         packet = null;
         error = string.Empty;
         if (string.IsNullOrWhiteSpace(json)) {
@@ -105,11 +102,36 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
             JObject root = JObject.Parse(json);
             foreach (string field in RequiredRootFields) {
                 if (root.Property(field) != null) continue;
-                error = $"UDP payload is not the delivery-only VoiceAnalyzer root schema (missing '{field}').";
+                error = $"UDP payload is not the VoiceAnalyzer Arousal/Valence root schema (missing '{field}').";
                 return false;
             }
 
-            packet = JsonUtility.FromJson<DeliveryPacket>(json);
+            if (root["speech_detected"].Type != JTokenType.Boolean) {
+                error = "'speech_detected' must be a boolean.";
+                return false;
+            }
+
+            bool speechDetected = root.Value<bool>("speech_detected");
+            if (speechDetected &&
+                (!TryReadNormalizedScore(root["arousal"], out _) ||
+                 !TryReadNormalizedScore(root["valence"], out _))) {
+                error = "Speech frames require numeric Arousal and Valence values in [-1, 1].";
+                return false;
+            }
+            if (!speechDetected) {
+                if (!NormalizeOptionalEmotionScore(root, "arousal") ||
+                    !NormalizeOptionalEmotionScore(root, "valence")) {
+                    error = "Arousal and Valence must be null or numeric values in [-1, 1].";
+                    return false;
+                }
+            }
+            if (!TryReadFiniteNumber(root["speech_rate_value"], out _) ||
+                !TryReadFiniteNumber(root["volume_value"], out _)) {
+                error = "Speech-rate and volume reference values must be finite numbers.";
+                return false;
+            }
+
+            packet = JsonUtility.FromJson<VoiceAnalysisPacket>(root.ToString(Newtonsoft.Json.Formatting.None));
         }
         catch (Exception exception) {
             error = exception.Message;
@@ -117,12 +139,40 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
         }
 
         if (packet == null || packet.timestamp <= 0d || packet.sequence_id <= 0 ||
-            packet.feature_window_seconds <= 0f || string.IsNullOrWhiteSpace(packet.delivery_style)) {
+            packet.feature_window_seconds <= 0f ||
+            !IsSupportedLevel(packet.speech_rate_level) || !IsSupportedLevel(packet.volume_level)) {
             packet = null;
-            error = "UDP payload is not the delivery-only VoiceAnalyzer root schema.";
+            error = "UDP payload is not the VoiceAnalyzer Arousal/Valence root schema.";
             return false;
         }
         return true;
+    }
+
+    private static bool TryReadNormalizedScore(JToken token, out double value) {
+        return TryReadFiniteNumber(token, out value) && value >= -1d && value <= 1d;
+    }
+
+    private static bool NormalizeOptionalEmotionScore(JObject root, string field) {
+        JToken token = root[field];
+        if (token.Type == JTokenType.Null) {
+            root[field] = 0d;
+            return true;
+        }
+        return TryReadNormalizedScore(token, out _);
+    }
+
+    private static bool TryReadFiniteNumber(JToken token, out double value) {
+        value = 0d;
+        if (token == null || (token.Type != JTokenType.Float && token.Type != JTokenType.Integer)) {
+            return false;
+        }
+
+        value = token.Value<double>();
+        return !double.IsNaN(value) && !double.IsInfinity(value);
+    }
+
+    private static bool IsSupportedLevel(string level) {
+        return level == "low" || level == "medium" || level == "high";
     }
 
     private void StartReceiver() {
@@ -136,7 +186,7 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
             isRunning = true;
             receiveThread = new Thread(ReceiveLoop) {
                 IsBackground = true,
-                Name = "Delivery UDP Receiver"
+                Name = "Voice Analysis UDP Receiver"
             };
             receiveThread.Start();
             lastError = string.Empty;
@@ -193,18 +243,15 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
 }
 
 [Serializable]
-public sealed class DeliveryPacket {
+public sealed class VoiceAnalysisPacket {
     public double timestamp;
     public long sequence_id;
     public bool speech_detected;
     public float feature_window_seconds;
-    public bool baseline_ready;
-    public double arousal_score;
-    public double raw_arousal_score;
-    public string arousal_level;
-    public double dominance_score;
-    public double raw_dominance_score;
-    public string dominance_level;
-    public string delivery_style;
-    public double relative_volume_score;
+    public double arousal;
+    public double valence;
+    public double speech_rate_value;
+    public string speech_rate_level;
+    public double volume_value;
+    public string volume_level;
 }

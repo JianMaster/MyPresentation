@@ -1,8 +1,8 @@
 public enum DeliveryStyle {
-    CalmConfident,
-    EnergeticConfident,
-    EnergeticUnsteady,
-    SubduedHesitant
+    CalmPositive,
+    EnergeticPositive,
+    EnergeticNegative,
+    CalmNegative
 }
 
 public enum Speed {
@@ -20,19 +20,19 @@ public enum Volume {
 public static class EnumTool {
     public static string GetDeliveryStyleText(DeliveryStyle style) {
         return style switch {
-            DeliveryStyle.EnergeticConfident => "活力・自信",
-            DeliveryStyle.EnergeticUnsteady => "活力・不安定",
-            DeliveryStyle.SubduedHesitant => "控えめ・ためらい",
-            _ => "冷静・自信",
+            DeliveryStyle.EnergeticPositive => "活力・前向き",
+            DeliveryStyle.EnergeticNegative => "活力・ネガティブ",
+            DeliveryStyle.CalmNegative => "落ち着き・ネガティブ",
+            _ => "落ち着き・前向き",
         };
     }
 
     public static string GetDeliveryStyleWireValue(DeliveryStyle style) {
         return style switch {
-            DeliveryStyle.EnergeticConfident => "energetic_confident",
-            DeliveryStyle.EnergeticUnsteady => "energetic_unsteady",
-            DeliveryStyle.SubduedHesitant => "subdued_hesitant",
-            _ => "calm_confident",
+            DeliveryStyle.EnergeticPositive => "energetic_positive",
+            DeliveryStyle.EnergeticNegative => "energetic_negative",
+            DeliveryStyle.CalmNegative => "calm_negative",
+            _ => "calm_positive",
         };
     }
 

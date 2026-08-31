@@ -19,16 +19,14 @@ public sealed class PerformanceEvaluatorTests {
     public void PerfectLineScoresOneHundred() {
         TextItem item = CreateItem();
         float duration = 5f;
-        float actualCpm = PerformanceEvaluator.CountCharacters(item.text) / duration * 60f;
 
         LineEvaluationResult result = PerformanceEvaluator.EvaluateLine(
             item,
             0,
-            actualCpm,
             0d,
             duration,
             true,
-            CreateSamples(4d, 1f, 1f, 0f),
+            CreateSamples(4d, 1f, 1f, 3.7f, 0.32f),
             _profile
         );
 
@@ -44,16 +42,14 @@ public sealed class PerformanceEvaluatorTests {
     public void MissingGazeReducesEqualWeightedTotalByTwentyFive() {
         TextItem item = CreateItem();
         float duration = 5f;
-        float actualCpm = PerformanceEvaluator.CountCharacters(item.text) / duration * 60f;
 
         LineEvaluationResult result = PerformanceEvaluator.EvaluateLine(
             item,
             0,
-            actualCpm,
             0d,
             duration,
             false,
-            CreateSamples(4d, 1f, 1f, 0f),
+            CreateSamples(4d, 1f, 1f, 3.7f, 0.32f),
             _profile
         );
 
@@ -61,9 +57,9 @@ public sealed class PerformanceEvaluatorTests {
     }
 
     [Test]
-    public void OppositeDeliveryDirectionScoresZero() {
+    public void OppositeArousalValenceDirectionScoresZero() {
         Assert.That(
-            PerformanceEvaluator.ScoreDelivery(DeliveryStyle.EnergeticConfident, -1f, -1f),
+            PerformanceEvaluator.ScoreDelivery(DeliveryStyle.EnergeticPositive, -1f, -1f),
             Is.EqualTo(0f)
         );
     }
@@ -71,13 +67,13 @@ public sealed class PerformanceEvaluatorTests {
     [Test]
     public void StaleOrShortAttemptsAreInvalidInsteadOfZeroScored() {
         TextItem item = CreateItem();
-        List<ScoringSample> staleSamples = CreateSamples(4d, 1f, 1f, 0f);
+        List<ScoringSample> staleSamples = CreateSamples(4d, 1f, 1f, 3.7f, 0.32f);
 
         LineEvaluationResult stale = PerformanceEvaluator.EvaluateLine(
-            item, 0, 200f, 0d, 7d, true, staleSamples, _profile
+            item, 0, 0d, 7d, true, staleSamples, _profile
         );
         LineEvaluationResult shortAttempt = PerformanceEvaluator.EvaluateLine(
-            item, 0, 200f, 0d, 3d, true, staleSamples, _profile
+            item, 0, 0d, 3d, true, staleSamples, _profile
         );
 
         Assert.That(stale.valid, Is.False);
@@ -85,67 +81,84 @@ public sealed class PerformanceEvaluatorTests {
     }
 
     [Test]
-    public void DeliveryRootUdpContractDeserializesTrainingFields() {
+    public void ArousalValenceUdpContractDeserializesTrainingFields() {
         const string json = "{\"timestamp\":123.5,\"sequence_id\":7,\"speech_detected\":true," +
-                            "\"feature_window_seconds\":4,\"baseline_ready\":true," +
-                            "\"arousal_score\":0.2,\"arousal_level\":\"low\"," +
-                            "\"raw_arousal_score\":0.4,\"raw_dominance_score\":-0.2," +
-                            "\"dominance_score\":-0.1,\"dominance_level\":\"low\"," +
-                            "\"delivery_style\":\"subdued_hesitant\"," +
-                            "\"relative_volume_score\":0.3}";
+                            "\"feature_window_seconds\":2,\"arousal\":0.4,\"valence\":-0.2," +
+                            "\"speech_rate_value\":3.7,\"speech_rate_level\":\"medium\"," +
+                            "\"volume_value\":0.32,\"volume_level\":\"medium\"}";
 
-        bool parsed = AnalysisUdpReceiver.TryParseDeliveryPacket(
+        bool parsed = AnalysisUdpReceiver.TryParseAnalysisPacket(
             json,
-            out DeliveryPacket packet,
+            out VoiceAnalysisPacket packet,
             out string error
         );
 
         Assert.That(parsed, Is.True, error);
         Assert.That(packet.sequence_id, Is.EqualTo(7));
         Assert.That(packet.speech_detected, Is.True);
-        Assert.That(packet.baseline_ready, Is.True);
-        Assert.That(packet.raw_arousal_score, Is.EqualTo(0.4d).Within(0.0001d));
-        Assert.That(packet.relative_volume_score, Is.EqualTo(0.3d).Within(0.0001d));
+        Assert.That(packet.arousal, Is.EqualTo(0.4d).Within(0.0001d));
+        Assert.That(packet.valence, Is.EqualTo(-0.2d).Within(0.0001d));
+        Assert.That(packet.speech_rate_value, Is.EqualTo(3.7d).Within(0.0001d));
+        Assert.That(packet.volume_value, Is.EqualTo(0.32d).Within(0.0001d));
     }
 
     [Test]
-    public void LegacyAnalyzerEnvelopeIsRejected() {
-        const string json = "{\"timestamp\":123.5,\"sequence_id\":7,\"speech_detected\":true," +
-                            "\"feature_window_seconds\":4,\"enabled\":{\"delivery\":true}," +
-                            "\"analyzers\":{\"delivery\":{\"baseline_ready\":true," +
-                            "\"delivery_style\":\"calm_confident\"}}}";
+    public void NoSpeechFrameAllowsNullEmotionScores() {
+        const string json = "{\"timestamp\":123.5,\"sequence_id\":7,\"speech_detected\":false," +
+                            "\"feature_window_seconds\":2,\"arousal\":null,\"valence\":null," +
+                            "\"speech_rate_value\":0.0,\"speech_rate_level\":\"low\"," +
+                            "\"volume_value\":0.01,\"volume_level\":\"low\"}";
 
-        bool parsed = AnalysisUdpReceiver.TryParseDeliveryPacket(
+        bool parsed = AnalysisUdpReceiver.TryParseAnalysisPacket(
             json,
-            out DeliveryPacket packet,
+            out VoiceAnalysisPacket packet,
+            out string error
+        );
+
+        Assert.That(parsed, Is.True, error);
+        Assert.That(packet.speech_detected, Is.False);
+        Assert.That(packet.arousal, Is.Zero);
+        Assert.That(packet.valence, Is.Zero);
+    }
+
+    [Test]
+    public void LegacyDeliveryRootIsRejected() {
+        const string json = "{\"timestamp\":123.5,\"sequence_id\":7,\"speech_detected\":true," +
+                            "\"feature_window_seconds\":4,\"baseline_ready\":true," +
+                            "\"raw_arousal_score\":0.4,\"raw_dominance_score\":0.2," +
+                            "\"delivery_style\":\"calm_confident\"}";
+
+        bool parsed = AnalysisUdpReceiver.TryParseAnalysisPacket(
+            json,
+            out VoiceAnalysisPacket packet,
             out string error
         );
 
         Assert.That(parsed, Is.False);
         Assert.That(packet, Is.Null);
-        Assert.That(error, Does.Contain("delivery-only"));
+        Assert.That(error, Does.Contain("Arousal/Valence"));
     }
 
     [Test]
-    public void LineEvaluationDoesNotRepeatVoiceCalibration() {
+    public void LineEvaluationUsesVoiceModelValuesWithoutCalibrationState() {
         TextItem item = CreateItem();
         float duration = 5f;
-        float referenceCpm = PerformanceEvaluator.CountCharacters(item.text) / duration * 60f;
-        DeliveryPacket packet = new DeliveryPacket {
+        VoiceAnalysisPacket packet = new VoiceAnalysisPacket {
             timestamp = 100d,
             sequence_id = 1,
             speech_detected = true,
-            feature_window_seconds = 4f,
-            baseline_ready = false,
-            raw_arousal_score = 1d,
-            raw_dominance_score = 1d,
-            relative_volume_score = 0d,
+            feature_window_seconds = 2f,
+            arousal = 1d,
+            valence = 1d,
+            speech_rate_value = 3.7d,
+            speech_rate_level = "medium",
+            volume_value = 0.32d,
+            volume_level = "medium",
         };
 
         LineEvaluationResult result = PerformanceEvaluator.EvaluateLine(
             item,
             0,
-            referenceCpm,
             0d,
             duration,
             true,
@@ -160,21 +173,28 @@ public sealed class PerformanceEvaluatorTests {
         return new TextItem {
             lineId = "test-line",
             text = "これは評価用の台詞です",
-            deliveryStyle = DeliveryStyle.EnergeticConfident,
+            deliveryStyle = DeliveryStyle.EnergeticPositive,
             speed = Speed.Normal,
             volume = Volume.Normal,
         };
     }
 
-    private static List<ScoringSample> CreateSamples(double receivedAt, float arousal, float dominance, float volume) {
+    private static List<ScoringSample> CreateSamples(
+        double receivedAt,
+        float arousal,
+        float valence,
+        float speechRate,
+        float volume
+    ) {
         return new List<ScoringSample> {
             new ScoringSample {
                 receivedAt = receivedAt,
                 speechDetected = true,
-                featureWindowSeconds = 4f,
-                rawArousalScore = arousal,
-                rawDominanceScore = dominance,
-                relativeVolumeScore = volume,
+                featureWindowSeconds = 2f,
+                arousal = arousal,
+                valence = valence,
+                speechRateValue = speechRate,
+                volumeValue = volume,
             },
         };
     }

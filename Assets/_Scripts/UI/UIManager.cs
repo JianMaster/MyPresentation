@@ -21,7 +21,7 @@ public sealed class UIManager : MonoBehaviour {
         SetText(
             $"<size=130%><b>トレーニング完了</b></size>\n\n" +
             $"総合　{result.totalScore:F1}\n" +
-            $"語気　{result.deliveryScore:F1}　　話速　{result.speedScore:F1}\n" +
+            $"音声表現　{result.deliveryScore:F1}　　話速　{result.speedScore:F1}\n" +
             $"音量　{result.volumeScore:F1}　　視線　{result.gazeScore:F1}\n\n" +
             $"得意：{result.strongestDimension}\n" +
             $"優先改善：{result.weakestDimension}\n" +

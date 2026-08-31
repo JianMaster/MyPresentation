@@ -13,18 +13,20 @@ public sealed class ScoringSample {
     public double receivedAt;
     public bool speechDetected;
     public float featureWindowSeconds;
-    public float rawArousalScore;
-    public float rawDominanceScore;
-    public float relativeVolumeScore;
+    public float arousal;
+    public float valence;
+    public float speechRateValue;
+    public float volumeValue;
 
-    public static ScoringSample FromPacket(DeliveryPacket packet, double receivedAt) {
+    public static ScoringSample FromPacket(VoiceAnalysisPacket packet, double receivedAt) {
         return new ScoringSample {
             receivedAt = receivedAt,
             speechDetected = packet?.speech_detected ?? false,
             featureWindowSeconds = packet?.feature_window_seconds ?? 0f,
-            rawArousalScore = packet != null ? (float)packet.raw_arousal_score : 0f,
-            rawDominanceScore = packet != null ? (float)packet.raw_dominance_score : 0f,
-            relativeVolumeScore = packet != null ? (float)packet.relative_volume_score : 0f,
+            arousal = packet != null ? (float)packet.arousal : 0f,
+            valence = packet != null ? (float)packet.valence : 0f,
+            speechRateValue = packet != null ? (float)packet.speech_rate_value : 0f,
+            volumeValue = packet != null ? (float)packet.volume_value : 0f,
         };
     }
 }
@@ -41,11 +43,10 @@ public sealed class LineEvaluationResult {
     public bool gazeCompleted;
     public int validSampleCount;
     public float speechSeconds;
-    public float actualCpm;
-    public float speedRatio;
-    public float meanRawArousal;
-    public float meanRawDominance;
-    public float meanRelativeVolume;
+    public float meanArousal;
+    public float meanValence;
+    public float meanSpeechRateValue;
+    public float meanVolumeValue;
     public float deliveryScore;
     public float speedScore;
     public float volumeScore;

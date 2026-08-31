@@ -23,7 +23,7 @@ public sealed class PresentationTaskController : MonoBehaviour {
 
     private void OnEnable() {
         if (_analysisReceiver != null) {
-            _analysisReceiver.DeliveryReceived += HandleDeliveryReceived;
+            _analysisReceiver.AnalysisReceived += HandleAnalysisReceived;
         }
     }
 
@@ -58,7 +58,7 @@ public sealed class PresentationTaskController : MonoBehaviour {
 
     private void OnDisable() {
         if (_analysisReceiver != null) {
-            _analysisReceiver.DeliveryReceived -= HandleDeliveryReceived;
+            _analysisReceiver.AnalysisReceived -= HandleAnalysisReceived;
         }
     }
 
@@ -66,9 +66,9 @@ public sealed class PresentationTaskController : MonoBehaviour {
         _logWriter?.Dispose();
     }
 
-    private void HandleDeliveryReceived(DeliveryPacket packet) {
+    private void HandleAnalysisReceived(VoiceAnalysisPacket packet) {
         if (packet == null) return;
-        _logWriter?.LogDeliverySample(packet, _state, CurrentItem?.lineId);
+        _logWriter?.LogVoiceAnalysisSample(packet, _state, CurrentItem?.lineId);
 
         if (_state == PresentationTaskState.WaitingForVoice) {
             _lineIndex = 0;
@@ -88,7 +88,7 @@ public sealed class PresentationTaskController : MonoBehaviour {
 
     private void EnterWaitingForVoice() {
         _state = PresentationTaskState.WaitingForVoice;
-        _ui.ShowWaiting("VoiceAnalyzer の delivery 出力を待っています。");
+        _ui.ShowWaiting("VoiceAnalyzer の Arousal / Valence 出力を待っています。");
     }
 
     private void EnterCurrentLine(string retryReason = null) {
@@ -120,7 +120,7 @@ public sealed class PresentationTaskController : MonoBehaviour {
         ShowCurrentLine("発話を検出しました。読み終わったら Enter を押してください。");
     }
 
-    private void RegisterScoringSample(DeliveryPacket packet, double receivedAt) {
+    private void RegisterScoringSample(VoiceAnalysisPacket packet, double receivedAt) {
         ScoringSample sample = ScoringSample.FromPacket(packet, receivedAt);
         _lineSamples.Add(sample);
 
@@ -128,15 +128,21 @@ public sealed class PresentationTaskController : MonoBehaviour {
 
         float deliveryScore = PerformanceEvaluator.ScoreDelivery(
             CurrentItem.deliveryStyle,
-            sample.rawArousalScore,
-            sample.rawDominanceScore
+            sample.arousal,
+            sample.valence
+        );
+        float speedScore = PerformanceEvaluator.ScoreSpeed(
+            CurrentItem.speed,
+            sample.speechRateValue,
+            _scoringProfile
         );
         float volumeScore = PerformanceEvaluator.ScoreVolume(
             CurrentItem.volume,
-            sample.relativeVolumeScore,
+            sample.volumeValue,
             _scoringProfile
         );
         bool matchesTarget = deliveryScore >= _scoringProfile.FeedbackMinimumDimensionScore &&
+                             speedScore >= _scoringProfile.FeedbackMinimumDimensionScore &&
                              volumeScore >= _scoringProfile.FeedbackMinimumDimensionScore;
         _audience.RegisterVoiceMatch(matchesTarget, _scoringProfile.FeedbackConsecutiveMatches);
     }
@@ -150,7 +156,6 @@ public sealed class PresentationTaskController : MonoBehaviour {
         LineEvaluationResult result = PerformanceEvaluator.EvaluateLine(
             CurrentItem,
             _audience.TargetRoleIndex,
-            _scoringProfile.ReferenceSpeedCpm,
             _speechStartedAt,
             Time.realtimeSinceStartupAsDouble,
             _audience.GazeCompleted,

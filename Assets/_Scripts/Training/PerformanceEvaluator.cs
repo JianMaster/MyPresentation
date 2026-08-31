@@ -4,12 +4,9 @@ using System.Linq;
 using UnityEngine;
 
 public static class PerformanceEvaluator {
-    private const string IgnoredCharacters = " \t\r\n、。，,.!?！？「」『』（）()[]{}:;：；…ー-—";
-
     public static LineEvaluationResult EvaluateLine(
         TextItem item,
         int targetRoleIndex,
-        float referenceCpm,
         double speechStartedAt,
         double endedAt,
         bool gazeCompleted,
@@ -41,24 +38,18 @@ public static class PerformanceEvaluator {
             return result;
         }
 
-        if (referenceCpm <= 0f) {
-            result.invalidReason = "話速の基準値が設定されていません";
-            return result;
-        }
-
         result.validSampleCount = validSamples.Count;
-        result.meanRawArousal = validSamples.Average(sample => sample.rawArousalScore);
-        result.meanRawDominance = validSamples.Average(sample => sample.rawDominanceScore);
-        result.meanRelativeVolume = validSamples.Average(sample => sample.relativeVolumeScore);
-        result.actualCpm = CountCharacters(item.text) / result.speechSeconds * 60f;
-        result.speedRatio = result.actualCpm / referenceCpm;
+        result.meanArousal = validSamples.Average(sample => sample.arousal);
+        result.meanValence = validSamples.Average(sample => sample.valence);
+        result.meanSpeechRateValue = validSamples.Average(sample => sample.speechRateValue);
+        result.meanVolumeValue = validSamples.Average(sample => sample.volumeValue);
         result.deliveryScore = ScoreDelivery(
             item.deliveryStyle,
-            result.meanRawArousal,
-            result.meanRawDominance
+            result.meanArousal,
+            result.meanValence
         );
-        result.speedScore = ScoreSpeed(item.speed, result.speedRatio, profile);
-        result.volumeScore = ScoreVolume(item.volume, result.meanRelativeVolume, profile);
+        result.speedScore = ScoreSpeed(item.speed, result.meanSpeechRateValue, profile);
+        result.volumeScore = ScoreVolume(item.volume, result.meanVolumeValue, profile);
         result.gazeScore = gazeCompleted ? 100f : 0f;
         result.totalScore = WeightedAverage(
             result.deliveryScore,
@@ -97,7 +88,7 @@ public static class PerformanceEvaluator {
         );
 
         var dimensions = new[] {
-            (Name: "語気", Score: result.deliveryScore),
+            (Name: "音声表現", Score: result.deliveryScore),
             (Name: "話速", Score: result.speedScore),
             (Name: "音量", Score: result.volumeScore),
             (Name: "視線", Score: result.gazeScore),
@@ -108,35 +99,34 @@ public static class PerformanceEvaluator {
         return result;
     }
 
-    public static float ScoreDelivery(DeliveryStyle target, float arousal, float dominance) {
-        float arousalSign = target == DeliveryStyle.EnergeticConfident || target == DeliveryStyle.EnergeticUnsteady ? 1f : -1f;
-        float dominanceSign = target == DeliveryStyle.EnergeticConfident || target == DeliveryStyle.CalmConfident ? 1f : -1f;
+    public static float ScoreDelivery(DeliveryStyle target, float arousal, float valence) {
+        float arousalSign = target == DeliveryStyle.EnergeticPositive || target == DeliveryStyle.EnergeticNegative ? 1f : -1f;
+        float valenceSign = target == DeliveryStyle.EnergeticPositive || target == DeliveryStyle.CalmPositive ? 1f : -1f;
         float arousalFit = Mathf.Clamp01(0.5f + 0.5f * arousalSign * Mathf.Clamp(arousal, -1f, 1f));
-        float dominanceFit = Mathf.Clamp01(0.5f + 0.5f * dominanceSign * Mathf.Clamp(dominance, -1f, 1f));
-        return (arousalFit + dominanceFit) * 50f;
+        float valenceFit = Mathf.Clamp01(0.5f + 0.5f * valenceSign * Mathf.Clamp(valence, -1f, 1f));
+        return (arousalFit + valenceFit) * 50f;
     }
 
-    public static float ScoreSpeed(Speed target, float ratio, ScoringProfile profile) {
-        float center = target switch {
-            Speed.Slow => profile.SlowSpeedRatio,
-            Speed.Fast => profile.FastSpeedRatio,
-            _ => profile.NormalSpeedRatio,
-        };
-        return ScoreAroundCenter(ratio, center, profile.SpeedFalloff);
+    public static float ScoreSpeed(Speed target, float speechRateValue, ScoringProfile profile) {
+        return ScoreTargetBand(
+            target == Speed.Slow,
+            target == Speed.Fast,
+            speechRateValue,
+            profile.SpeechRateMediumMin,
+            profile.SpeechRateMediumMax,
+            profile.SpeechRateFalloff
+        );
     }
 
-    public static float ScoreVolume(Volume target, float relativeVolume, ScoringProfile profile) {
-        float center = target switch {
-            Volume.Low => profile.LowVolumeCenter,
-            Volume.High => profile.HighVolumeCenter,
-            _ => profile.NormalVolumeCenter,
-        };
-        return ScoreAroundCenter(relativeVolume, center, profile.VolumeFalloff);
-    }
-
-    public static int CountCharacters(string text) {
-        if (string.IsNullOrEmpty(text)) return 0;
-        return text.Count(character => !IgnoredCharacters.Contains(character));
+    public static float ScoreVolume(Volume target, float volumeValue, ScoringProfile profile) {
+        return ScoreTargetBand(
+            target == Volume.Low,
+            target == Volume.High,
+            volumeValue,
+            profile.VolumeMediumMin,
+            profile.VolumeMediumMax,
+            profile.VolumeFalloff
+        );
     }
 
     private static LineEvaluationResult CreateResult(TextItem item, int targetRoleIndex, bool gazeCompleted) {
@@ -151,8 +141,22 @@ public static class PerformanceEvaluator {
         };
     }
 
-    private static float ScoreAroundCenter(float value, float center, float falloff) {
-        return 100f * Mathf.Clamp01(1f - Mathf.Abs(value - center) / Mathf.Max(0.01f, falloff));
+    private static float ScoreTargetBand(
+        bool targetLow,
+        bool targetHigh,
+        float value,
+        float mediumMin,
+        float mediumMax,
+        float falloff
+    ) {
+        float distance = targetLow
+            ? Mathf.Max(0f, value - mediumMin)
+            : targetHigh
+                ? Mathf.Max(0f, mediumMax - value)
+                : value < mediumMin
+                    ? mediumMin - value
+                    : Mathf.Max(0f, value - mediumMax);
+        return 100f * Mathf.Clamp01(1f - distance / Mathf.Max(0.001f, falloff));
     }
 
     private static float WeightedAverage(
@@ -174,7 +178,7 @@ public static class PerformanceEvaluator {
 
     private static string AdviceFor(string dimension) {
         return dimension switch {
-            "語気" => "表示された語気の方向を意識し、声の勢いと安定感をより明確に変えてみましょう。",
+            "音声表現" => "表示された方向を意識し、声の勢いと明るさをより明確に変えてみましょう。",
             "話速" => "基準話速との差を確認し、句読点で間を取りながら目標の速さを保ちましょう。",
             "音量" => "マイクとの距離を一定にし、表示された大小を意識して声量を調整しましょう。",
             _ => "視線対象を早めに確認し、台詞の途中で一度は相手の顔を見るようにしましょう。",

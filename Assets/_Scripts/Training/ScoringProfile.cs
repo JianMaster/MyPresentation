@@ -14,16 +14,13 @@ public sealed class ScoringProfile : ScriptableObject {
     [SerializeField, Min(0f)] private float _volumeWeight = 0.25f;
     [SerializeField, Min(0f)] private float _gazeWeight = 0.25f;
 
-    [Header("Speed and volume targets")]
-    [SerializeField, Min(1f)] private float _referenceSpeedCpm = 300f;
-    [SerializeField] private float _slowSpeedRatio = 0.8f;
-    [SerializeField] private float _normalSpeedRatio = 1f;
-    [SerializeField] private float _fastSpeedRatio = 1.2f;
-    [SerializeField, Min(0.01f)] private float _speedFalloff = 0.25f;
-    [SerializeField] private float _lowVolumeCenter = -0.5f;
-    [SerializeField] private float _normalVolumeCenter = 0f;
-    [SerializeField] private float _highVolumeCenter = 0.5f;
-    [SerializeField, Min(0.01f)] private float _volumeFalloff = 0.5f;
+    [Header("openSMILE target bands")]
+    [SerializeField] private float _speechRateMediumMin = 3.279f;
+    [SerializeField] private float _speechRateMediumMax = 4.054f;
+    [SerializeField, Min(0.001f)] private float _speechRateFalloff = 0.775f;
+    [SerializeField] private float _volumeMediumMin = 0.253f;
+    [SerializeField] private float _volumeMediumMax = 0.381f;
+    [SerializeField, Min(0.001f)] private float _volumeFalloff = 0.128f;
 
     [Header("Validity and feedback")]
     [SerializeField, Min(0.1f)] private float _minimumSpeechSeconds = 4f;
@@ -40,14 +37,11 @@ public sealed class ScoringProfile : ScriptableObject {
     public float SpeedWeight => _speedWeight;
     public float VolumeWeight => _volumeWeight;
     public float GazeWeight => _gazeWeight;
-    public float ReferenceSpeedCpm => _referenceSpeedCpm;
-    public float SlowSpeedRatio => _slowSpeedRatio;
-    public float NormalSpeedRatio => _normalSpeedRatio;
-    public float FastSpeedRatio => _fastSpeedRatio;
-    public float SpeedFalloff => _speedFalloff;
-    public float LowVolumeCenter => _lowVolumeCenter;
-    public float NormalVolumeCenter => _normalVolumeCenter;
-    public float HighVolumeCenter => _highVolumeCenter;
+    public float SpeechRateMediumMin => _speechRateMediumMin;
+    public float SpeechRateMediumMax => _speechRateMediumMax;
+    public float SpeechRateFalloff => _speechRateFalloff;
+    public float VolumeMediumMin => _volumeMediumMin;
+    public float VolumeMediumMax => _volumeMediumMax;
     public float VolumeFalloff => _volumeFalloff;
     public float MinimumSpeechSeconds => _minimumSpeechSeconds;
     public float MaximumSampleAgeSeconds => _maximumSampleAgeSeconds;
@@ -56,9 +50,10 @@ public sealed class ScoringProfile : ScriptableObject {
     public float ApplauseThreshold => _applauseThreshold;
 
     private void OnValidate() {
-        _referenceSpeedCpm = Mathf.Max(1f, _referenceSpeedCpm);
-        _speedFalloff = Mathf.Max(0.01f, _speedFalloff);
-        _volumeFalloff = Mathf.Max(0.01f, _volumeFalloff);
+        _speechRateMediumMax = Mathf.Max(_speechRateMediumMin, _speechRateMediumMax);
+        _speechRateFalloff = Mathf.Max(0.001f, _speechRateFalloff);
+        _volumeMediumMax = Mathf.Max(_volumeMediumMin, _volumeMediumMax);
+        _volumeFalloff = Mathf.Max(0.001f, _volumeFalloff);
         _minimumSpeechSeconds = Mathf.Max(0.1f, _minimumSpeechSeconds);
         _maximumSampleAgeSeconds = Mathf.Max(0.1f, _maximumSampleAgeSeconds);
         _feedbackConsecutiveMatches = Mathf.Max(1, _feedbackConsecutiveMatches);

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a101ef773ab54818b28b3285a358ba01, type: 3}
   m_Name: DefaultScoringProfile
   m_EditorClassIdentifier: Assembly-CSharp::ScoringProfile
-  _algorithmVersion: training-v1.1.0-delivery-root
+  _algorithmVersion: training-v2.0.0-av-prosody
   _scriptVersion: company-speech-v1
   _phase: training
   _condition: implicit-positive-feedback
@@ -20,15 +20,12 @@ MonoBehaviour:
   _speedWeight: 0.25
   _volumeWeight: 0.25
   _gazeWeight: 0.25
-  _referenceSpeedCpm: 300
-  _slowSpeedRatio: 0.8
-  _normalSpeedRatio: 1
-  _fastSpeedRatio: 1.2
-  _speedFalloff: 0.25
-  _lowVolumeCenter: -0.5
-  _normalVolumeCenter: 0
-  _highVolumeCenter: 0.5
-  _volumeFalloff: 0.5
+  _speechRateMediumMin: 3.279
+  _speechRateMediumMax: 4.054
+  _speechRateFalloff: 0.775
+  _volumeMediumMin: 0.253
+  _volumeMediumMax: 0.381
+  _volumeFalloff: 0.128
   _minimumSpeechSeconds: 4
   _maximumSampleAgeSeconds: 2.5
   _feedbackConsecutiveMatches: 2
