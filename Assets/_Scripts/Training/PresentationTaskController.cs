@@ -1,6 +1,6 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public sealed class PresentationTaskController : MonoBehaviour {
     [Header("Scene dependencies")]
@@ -15,16 +15,19 @@ public sealed class PresentationTaskController : MonoBehaviour {
 
     private readonly List<ScoringSample> _lineSamples = new List<ScoringSample>();
     private readonly List<LineEvaluationResult> _lineResults = new List<LineEvaluationResult>();
-    private PresentationTaskState _state = PresentationTaskState.WaitingForVoice;
+    private PresentationTaskState _state = PresentationTaskState.WaitingForSpeech;
     private AudienceFeedbackController _audience;
     private SessionLogWriter _logWriter;
     private int _lineIndex;
-    private double _speechStartedAt = -1d;
+    private double _lineShownAt;
+    private double _utteranceStartedAt;
+    private bool _initialized;
 
     private void OnEnable() {
         if (_analysisReceiver != null) {
             _analysisReceiver.AnalysisReceived += HandleAnalysisReceived;
         }
+        if (_initialized && _state != PresentationTaskState.Completed) EnterCurrentLine();
     }
 
     private void Start() {
@@ -32,14 +35,19 @@ public sealed class PresentationTaskController : MonoBehaviour {
             enabled = false;
             return;
         }
-
         _audience = new AudienceFeedbackController(_audienceView);
         _logWriter = new SessionLogWriter(_participantId, _scoringProfile);
-        EnterWaitingForVoice();
+        _initialized = true;
+        EnterCurrentLine();
     }
 
     private void Update() {
-        if (_state == PresentationTaskState.RecordingLine && _audience.TryCompleteGaze()) {
+        UpdateGaze();
+    }
+
+    private void UpdateGaze() {
+        // VoiceAD reports after inference; allow gaze throughout the displayed line.
+        if (_initialized && _state != PresentationTaskState.Completed && _audience.TryCompleteGaze()) {
             _logWriter?.LogGazeCompleted(
                 CurrentItem.lineId,
                 _audience.TargetRoleIndex,
@@ -47,13 +55,6 @@ public sealed class PresentationTaskController : MonoBehaviour {
             );
         }
 
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard == null || !keyboard.enterKey.wasPressedThisFrame) return;
-
-        if (_state == PresentationTaskState.WaitingForSpeech ||
-            _state == PresentationTaskState.RecordingLine) {
-            CompleteCurrentLine();
-        }
     }
 
     private void OnDisable() {
@@ -67,28 +68,23 @@ public sealed class PresentationTaskController : MonoBehaviour {
     }
 
     private void HandleAnalysisReceived(VoiceAnalysisPacket packet) {
-        if (packet == null) return;
+        if (!_initialized || packet == null || _state == PresentationTaskState.Completed) return;
+        // Ignore results from before this line, including delayed or duplicated end packets.
+        if (packet.utterance_started_at < _lineShownAt || packet.utterance_started_at < _utteranceStartedAt) return;
+
+        if (packet.utterance_started_at > _utteranceStartedAt) {
+            // A dropped end packet must not mix two utterances into one evaluation.
+            _lineSamples.Clear();
+            _utteranceStartedAt = packet.utterance_started_at;
+            _state = PresentationTaskState.RecordingLine;
+            ShowCurrentLine("音声を分析しています。発話終了を検出すると自動で次へ進みます。");
+        }
         _logWriter?.LogVoiceAnalysisSample(packet, _state, CurrentItem?.lineId);
-
-        if (_state == PresentationTaskState.WaitingForVoice) {
-            _lineIndex = 0;
-            EnterCurrentLine();
-            return;
+        UpdateGaze();
+        if (!_lineSamples.Exists(sample => sample.segmentIndex == packet.segment_index)) {
+            RegisterScoringSample(packet);
         }
-
-        double receivedAt = Time.realtimeSinceStartupAsDouble;
-        if (_state == PresentationTaskState.WaitingForSpeech && packet.speech_detected) {
-            EnterRecordingLine(receivedAt);
-        }
-
-        if (_state == PresentationTaskState.RecordingLine && packet.speech_detected) {
-            RegisterScoringSample(packet, receivedAt);
-        }
-    }
-
-    private void EnterWaitingForVoice() {
-        _state = PresentationTaskState.WaitingForVoice;
-        _ui.ShowWaiting("VoiceAnalyzer の Arousal / Valence 出力を待っています。");
+        if (packet.speech_ended) CompleteCurrentLine();
     }
 
     private void EnterCurrentLine(string retryReason = null) {
@@ -98,7 +94,8 @@ public sealed class PresentationTaskController : MonoBehaviour {
         }
 
         _lineSamples.Clear();
-        _speechStartedAt = -1d;
+        _lineShownAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000d;
+        _utteranceStartedAt = 0d;
         _state = PresentationTaskState.WaitingForSpeech;
         _audience.BeginLine(CurrentItem, _lineIndex);
         _logWriter?.LogLineStart(
@@ -109,27 +106,19 @@ public sealed class PresentationTaskController : MonoBehaviour {
         );
 
         string status = string.IsNullOrEmpty(retryReason)
-            ? "読み始めてください。完了後に Enter を押してください。"
+            ? "読み始めてください。発話後に少し黙ると自動で次へ進みます。"
             : $"{retryReason}\n同じ台詞をもう一度読んでください。";
         ShowCurrentLine(status);
     }
 
-    private void EnterRecordingLine(double startedAt) {
-        _speechStartedAt = startedAt;
-        _state = PresentationTaskState.RecordingLine;
-        ShowCurrentLine("発話を検出しました。読み終わったら Enter を押してください。");
-    }
-
-    private void RegisterScoringSample(VoiceAnalysisPacket packet, double receivedAt) {
-        ScoringSample sample = ScoringSample.FromPacket(packet, receivedAt);
+    private void RegisterScoringSample(VoiceAnalysisPacket packet) {
+        ScoringSample sample = ScoringSample.FromPacket(packet);
         _lineSamples.Add(sample);
-
-        if (receivedAt - _speechStartedAt < packet.feature_window_seconds) return;
 
         float deliveryScore = PerformanceEvaluator.ScoreDelivery(
             CurrentItem.deliveryStyle,
             sample.arousal,
-            sample.valence
+            sample.dominance
         );
         float speedScore = PerformanceEvaluator.ScoreSpeed(
             CurrentItem.speed,
@@ -148,16 +137,11 @@ public sealed class PresentationTaskController : MonoBehaviour {
     }
 
     private void CompleteCurrentLine() {
-        if (_state != PresentationTaskState.RecordingLine || _speechStartedAt < 0d) {
-            ShowCurrentLine("まだ音声を検出していません。台詞を読んでください。");
-            return;
-        }
+        if (_state != PresentationTaskState.RecordingLine) return;
 
         LineEvaluationResult result = PerformanceEvaluator.EvaluateLine(
             CurrentItem,
             _audience.TargetRoleIndex,
-            _speechStartedAt,
-            Time.realtimeSinceStartupAsDouble,
             _audience.GazeCompleted,
             _lineSamples,
             _scoringProfile

@@ -7,24 +7,15 @@ public static class PerformanceEvaluator {
     public static LineEvaluationResult EvaluateLine(
         TextItem item,
         int targetRoleIndex,
-        double speechStartedAt,
-        double endedAt,
         bool gazeCompleted,
         IReadOnlyList<ScoringSample> samples,
         ScoringProfile profile
     ) {
         LineEvaluationResult result = CreateResult(item, targetRoleIndex, gazeCompleted);
-        result.speechSeconds = Mathf.Max(0f, (float)(endedAt - speechStartedAt));
-
-        if (result.speechSeconds < profile.MinimumSpeechSeconds) {
-            result.invalidReason = "発話時間が短すぎます";
-            return result;
-        }
-
         List<ScoringSample> validSamples = samples
-            .Where(sample => sample != null && sample.speechDetected)
-            .Where(sample => sample.receivedAt >= speechStartedAt)
-            .Where(sample => sample.receivedAt - speechStartedAt >= Math.Max(0f, sample.featureWindowSeconds))
+            .Where(sample => sample != null && sample.segmentSeconds > 0f)
+            .GroupBy(sample => sample.segmentIndex)
+            .Select(group => group.First())
             .ToList();
 
         if (validSamples.Count == 0) {
@@ -32,21 +23,17 @@ public static class PerformanceEvaluator {
             return result;
         }
 
-        ScoringSample newest = validSamples.OrderByDescending(sample => sample.receivedAt).First();
-        if (endedAt - newest.receivedAt > profile.MaximumSampleAgeSeconds) {
-            result.invalidReason = "分析データが古いため再試行してください";
-            return result;
-        }
-
+        result.speechSeconds = validSamples.Sum(sample => sample.segmentSeconds);
         result.validSampleCount = validSamples.Count;
-        result.meanArousal = validSamples.Average(sample => sample.arousal);
-        result.meanValence = validSamples.Average(sample => sample.valence);
-        result.meanSpeechRateValue = validSamples.Average(sample => sample.speechRateValue);
-        result.meanVolumeValue = validSamples.Average(sample => sample.volumeValue);
+        // Weight by analyzed duration so a short tail does not outweigh a full segment.
+        result.meanArousal = validSamples.Sum(sample => sample.arousal * sample.segmentSeconds) / result.speechSeconds;
+        result.meanDominance = validSamples.Sum(sample => sample.dominance * sample.segmentSeconds) / result.speechSeconds;
+        result.meanSpeechRateValue = validSamples.Sum(sample => sample.speechRateValue * sample.segmentSeconds) / result.speechSeconds;
+        result.meanVolumeValue = validSamples.Sum(sample => sample.volumeValue * sample.segmentSeconds) / result.speechSeconds;
         result.deliveryScore = ScoreDelivery(
             item.deliveryStyle,
             result.meanArousal,
-            result.meanValence
+            result.meanDominance
         );
         result.speedScore = ScoreSpeed(item.speed, result.meanSpeechRateValue, profile);
         result.volumeScore = ScoreVolume(item.volume, result.meanVolumeValue, profile);
@@ -99,12 +86,12 @@ public static class PerformanceEvaluator {
         return result;
     }
 
-    public static float ScoreDelivery(DeliveryStyle target, float arousal, float valence) {
-        float arousalSign = target == DeliveryStyle.EnergeticPositive || target == DeliveryStyle.EnergeticNegative ? 1f : -1f;
-        float valenceSign = target == DeliveryStyle.EnergeticPositive || target == DeliveryStyle.CalmPositive ? 1f : -1f;
+    public static float ScoreDelivery(DeliveryStyle target, float arousal, float dominance) {
+        float arousalSign = target == DeliveryStyle.EnergeticConfident || target == DeliveryStyle.EnergeticHesitant ? 1f : -1f;
+        float dominanceSign = target == DeliveryStyle.EnergeticConfident || target == DeliveryStyle.CalmConfident ? 1f : -1f;
         float arousalFit = Mathf.Clamp01(0.5f + 0.5f * arousalSign * Mathf.Clamp(arousal, -1f, 1f));
-        float valenceFit = Mathf.Clamp01(0.5f + 0.5f * valenceSign * Mathf.Clamp(valence, -1f, 1f));
-        return (arousalFit + valenceFit) * 50f;
+        float dominanceFit = Mathf.Clamp01(0.5f + 0.5f * dominanceSign * Mathf.Clamp(dominance, -1f, 1f));
+        return (arousalFit + dominanceFit) * 50f;
     }
 
     public static float ScoreSpeed(Speed target, float speechRateValue, ScoringProfile profile) {
@@ -178,7 +165,7 @@ public static class PerformanceEvaluator {
 
     private static string AdviceFor(string dimension) {
         return dimension switch {
-            "音声表現" => "表示された方向を意識し、声の勢いと明るさをより明確に変えてみましょう。",
+            "音声表現" => "表示された方向を意識し、声の勢いと自信の表現をより明確に変えてみましょう。",
             "話速" => "基準話速との差を確認し、句読点で間を取りながら目標の速さを保ちましょう。",
             "音量" => "マイクとの距離を一定にし、表示された大小を意識して声量を調整しましょう。",
             _ => "視線対象を早めに確認し、台詞の途中で一度は相手の顔を見るようにしましょう。",

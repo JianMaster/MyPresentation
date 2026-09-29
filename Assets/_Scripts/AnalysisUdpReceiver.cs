@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -8,16 +9,12 @@ using UnityEngine;
 
 public sealed class AnalysisUdpReceiver : MonoBehaviour {
     private static readonly string[] RequiredRootFields = {
-        "timestamp",
-        "sequence_id",
-        "speech_detected",
-        "feature_window_seconds",
-        "arousal",
-        "valence",
-        "speech_rate_value",
+        "A", "D",
+        "utterance_started_at", "segment_index", "segment_seconds", "speech_ended",
+        "speech_rate",
         "speech_rate_level",
-        "volume_value",
-        "volume_level",
+        "loudness",
+        "loudness_level",
     };
 
     [SerializeField] private int listenPort = 5005;
@@ -29,14 +26,11 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
     private readonly object pendingLock = new object();
     private UdpClient udpClient;
     private Thread receiveThread;
-    private string pendingJson;
+    private readonly Queue<string> pendingJson = new Queue<string>();
     private string pendingError;
-    private bool hasPendingJson;
     private bool hasPendingError;
     private volatile bool isRunning;
     private int receivedCount;
-    private double lastAcceptedTimestamp;
-    private long lastAcceptedSequenceId;
 
     public event Action<VoiceAnalysisPacket> AnalysisReceived;
 
@@ -45,15 +39,12 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
     }
 
     private void Update() {
-        string json = null;
+        string[] messages;
         string error = null;
 
         lock (pendingLock) {
-            if (hasPendingJson) {
-                json = pendingJson;
-                pendingJson = null;
-                hasPendingJson = false;
-            }
+            messages = pendingJson.ToArray();
+            pendingJson.Clear();
 
             if (hasPendingError) {
                 error = pendingError;
@@ -65,21 +56,18 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
         if (!string.IsNullOrEmpty(error)) {
             lastError = error;
         }
-        if (string.IsNullOrEmpty(json)) return;
+        foreach (string json in messages) {
+            if (!TryParseAnalysisPacket(json, out VoiceAnalysisPacket packet, out string parseError)) {
+                lastError = parseError;
+                continue;
+            }
 
-        if (!TryParseAnalysisPacket(json, out VoiceAnalysisPacket packet, out string parseError)) {
-            lastError = parseError;
-            return;
+            latestPacket = packet;
+            latestJson = json;
+            packetsReceived = Volatile.Read(ref receivedCount);
+            lastError = string.Empty;
+            AnalysisReceived?.Invoke(packet);
         }
-        if (packet.timestamp <= lastAcceptedTimestamp && packet.sequence_id <= lastAcceptedSequenceId) return;
-
-        latestPacket = packet;
-        lastAcceptedTimestamp = packet.timestamp;
-        lastAcceptedSequenceId = packet.sequence_id;
-        latestJson = json;
-        packetsReceived = Volatile.Read(ref receivedCount);
-        lastError = string.Empty;
-        AnalysisReceived?.Invoke(packet);
     }
 
     private void OnDisable() {
@@ -102,47 +90,40 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
             JObject root = JObject.Parse(json);
             foreach (string field in RequiredRootFields) {
                 if (root.Property(field) != null) continue;
-                error = $"UDP payload is not the VoiceAnalyzer Arousal/Valence root schema (missing '{field}').";
+                error = $"VoiceAD packet is missing '{field}'.";
                 return false;
             }
 
-            if (root["speech_detected"].Type != JTokenType.Boolean) {
-                error = "'speech_detected' must be a boolean.";
+            if (root["speech_ended"].Type != JTokenType.Boolean) {
+                error = "'speech_ended' must be a boolean.";
                 return false;
             }
 
-            bool speechDetected = root.Value<bool>("speech_detected");
-            if (speechDetected &&
-                (!TryReadNormalizedScore(root["arousal"], out _) ||
-                 !TryReadNormalizedScore(root["valence"], out _))) {
-                error = "Speech frames require numeric Arousal and Valence values in [-1, 1].";
+            if (!TryReadNormalizedScore(root["A"], out _) ||
+                !TryReadNormalizedScore(root["D"], out _)) {
+                error = "VoiceAD A and D must be finite numbers in [-1, 1].";
                 return false;
             }
-            if (!speechDetected) {
-                if (!NormalizeOptionalEmotionScore(root, "arousal") ||
-                    !NormalizeOptionalEmotionScore(root, "valence")) {
-                    error = "Arousal and Valence must be null or numeric values in [-1, 1].";
-                    return false;
-                }
-            }
-            if (!TryReadFiniteNumber(root["speech_rate_value"], out _) ||
-                !TryReadFiniteNumber(root["volume_value"], out _)) {
-                error = "Speech-rate and volume reference values must be finite numbers.";
+            if (!TryReadFiniteNumber(root["speech_rate"], out double rate) || rate < 0d || rate > float.MaxValue ||
+                !TryReadFiniteNumber(root["loudness"], out double loudness) || loudness < 0d || loudness > float.MaxValue ||
+                !TryReadFiniteNumber(root["utterance_started_at"], out double startedAt) || startedAt <= 0d ||
+                !TryReadFiniteNumber(root["segment_seconds"], out double seconds) || seconds <= 0d || seconds > float.MaxValue ||
+                root["segment_index"].Type != JTokenType.Integer ||
+                !IsSupportedLevel(root["speech_rate_level"]) || !IsSupportedLevel(root["loudness_level"])) {
+                error = "Invalid VoiceAD timing, segment index, or acoustic values.";
                 return false;
             }
 
-            packet = JsonUtility.FromJson<VoiceAnalysisPacket>(root.ToString(Newtonsoft.Json.Formatting.None));
+            packet = root.ToObject<VoiceAnalysisPacket>();
         }
         catch (Exception exception) {
             error = exception.Message;
             return false;
         }
 
-        if (packet == null || packet.timestamp <= 0d || packet.sequence_id <= 0 ||
-            packet.feature_window_seconds <= 0f ||
-            !IsSupportedLevel(packet.speech_rate_level) || !IsSupportedLevel(packet.volume_level)) {
+        if (packet == null || packet.segment_index <= 0 || packet.segment_seconds <= 0f) {
             packet = null;
-            error = "UDP payload is not the VoiceAnalyzer Arousal/Valence root schema.";
+            error = "Invalid VoiceAD segment index.";
             return false;
         }
         return true;
@@ -150,15 +131,6 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
 
     private static bool TryReadNormalizedScore(JToken token, out double value) {
         return TryReadFiniteNumber(token, out value) && value >= -1d && value <= 1d;
-    }
-
-    private static bool NormalizeOptionalEmotionScore(JObject root, string field) {
-        JToken token = root[field];
-        if (token.Type == JTokenType.Null) {
-            root[field] = 0d;
-            return true;
-        }
-        return TryReadNormalizedScore(token, out _);
     }
 
     private static bool TryReadFiniteNumber(JToken token, out double value) {
@@ -171,8 +143,8 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
         return !double.IsNaN(value) && !double.IsInfinity(value);
     }
 
-    private static bool IsSupportedLevel(string level) {
-        return level == "low" || level == "medium" || level == "high";
+    private static bool IsSupportedLevel(JToken token) {
+        return token.Type == JTokenType.Integer && token.Value<long>() >= -1 && token.Value<long>() <= 1;
     }
 
     private void StartReceiver() {
@@ -206,8 +178,9 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
                 string json = Encoding.UTF8.GetString(bytes);
 
                 lock (pendingLock) {
-                    pendingJson = json;
-                    hasPendingJson = true;
+                    // Keep a final packet even when another segment arrives in the same frame.
+                    if (pendingJson.Count >= 128) pendingJson.Dequeue();
+                    pendingJson.Enqueue(json);
                 }
 
                 Interlocked.Increment(ref receivedCount);
@@ -239,19 +212,23 @@ public sealed class AnalysisUdpReceiver : MonoBehaviour {
             receiveThread.Join(200);
             receiveThread = null;
         }
+        lock (pendingLock) {
+            pendingJson.Clear();
+            hasPendingError = false;
+        }
     }
 }
 
 [Serializable]
 public sealed class VoiceAnalysisPacket {
-    public double timestamp;
-    public long sequence_id;
-    public bool speech_detected;
-    public float feature_window_seconds;
-    public double arousal;
-    public double valence;
-    public double speech_rate_value;
-    public string speech_rate_level;
-    public double volume_value;
-    public string volume_level;
+    public double utterance_started_at;
+    public int segment_index;
+    public float segment_seconds;
+    public bool speech_ended;
+    public double A;
+    public double D;
+    public double speech_rate;
+    public int speech_rate_level;
+    public double loudness;
+    public int loudness_level;
 }

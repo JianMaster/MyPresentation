@@ -5822,16 +5822,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AnalysisUdpReceiver
   listenPort: 5005
   latestPacket:
-    timestamp: 0
-    sequence_id: 0
-    speech_detected: 0
-    feature_window_seconds: 0
-    arousal: 0
-    valence: 0
-    speech_rate_value: 0
-    speech_rate_level: 
-    volume_value: 0
-    volume_level: 
+    utterance_started_at: 0
+    segment_index: 0
+    segment_seconds: 0
+    speech_ended: 0
+    A: 0
+    D: 0
+    speech_rate: 0
+    speech_rate_level: 0
+    loudness: 0
+    loudness_level: 0
   latestJson: 
   packetsReceived: 0
   lastError: 

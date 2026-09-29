@@ -6,10 +6,6 @@ public sealed class UIManager : MonoBehaviour {
 
     public bool IsConfigured => _textDisplay != null;
 
-    public void ShowWaiting(string message) {
-        SetText($"<size=120%>音声分析システムを待っています</size>\n{message}");
-    }
-
     public void ShowLine(int textIndex, int total, string body, string status) {
         SetText(
             $"<size=85%>台詞 {textIndex + 1} / {total}</size>\n" +
