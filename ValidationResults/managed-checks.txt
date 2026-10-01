@@ -1,0 +1,64 @@
+warning CS1701: 假定“Newtonsoft.Json”使用的程序集引用“netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51”与“netstandard”的标识“netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51”匹配，您可能需要提供运行时策略
+Assets\Presentation\Scripts\Player\PlayerController.cs(6,44): warning CS0649: 从未对字段“PlayerController._cameraRoot”赋值，字段将一直保持其默认值 null
+Assets\Presentation\Scripts\Main.cs(13,49): warning CS0649: 从未对字段“Main._audience”赋值，字段将一直保持其默认值 null
+Assets\Presentation\Scripts\Main.cs(10,49): warning CS0649: 从未对字段“Main._profile”赋值，字段将一直保持其默认值 null
+Assets\Presentation\Scripts\Main.cs(9,45): warning CS0649: 从未对字段“Main._speech”赋值，字段将一直保持其默认值 null
+Assets\Presentation\Scripts\Main.cs(12,41): warning CS0649: 从未对字段“Main._camera”赋值，字段将一直保持其默认值 null
+Assets\Presentation\Scripts\UI\TrainingView.cs(6,43): warning CS0649: 从未对字段“TrainingView._text”赋值，字段将一直保持其默认值 null
+Assets\Presentation\Scripts\Main.cs(11,47): warning CS0649: 从未对字段“Main._view”赋值，字段将一直保持其默认值 null
+Runtime compilation passed against the current Unity assemblies.
+warning CS1701: 假定“Newtonsoft.Json”使用的程序集引用“netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51”与“netstandard”的标识“netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51”匹配，您可能需要提供运行时策略
+﻿PASS VoiceAD A/D packet accepted; V ignored
+PASS Malformed JSON rejected
+PASS Missing required dimension rejected
+PASS Null dimension rejected
+PASS Out-of-range dimension rejected
+PASS NaN rejected
+PASS Zero duration rejected
+PASS Infinite acoustic value rejected
+PASS Maximum-length segment does not end a line
+PASS Additional intermediate segment keeps line open
+PASS Segments weighted by duration
+PASS Repeated segment with endpoint completes utterance
+PASS Repeated final segment is not counted twice
+PASS New utterance replaces previous samples
+PASS Different utterances are not mixed
+PASS Delayed endpoint from older utterance is ignored
+PASS Matching voice and gaze score 100
+PASS Missing gaze subtracts 25 points
+PASS Delivery target CalmConfident
+PASS Delivery target EnergeticConfident
+PASS Delivery target EnergeticHesitant
+PASS Delivery target CalmHesitant
+PASS Slow speed boundary
+PASS Loud volume boundary
+PASS Speed falloff
+PASS Volume falloff
+PASS Default scoring configuration valid
+PASS Configured weights affect total
+PASS Advice excludes dimensions with zero weight
+PASS All-zero weights rejected
+PASS Reversed scoring interval rejected
+PASS Non-finite scoring parameter rejected
+PASS Configured interval affects scoring
+PASS Advice selects weakest dimension
+PASS Pause and emphasis formatting
+PASS Missing annotations are harmless
+PASS Waiting and analyzing statuses differ
+PASS No-result timeout gives useful troubleshooting
+PASS Missing-endpoint timeout keeps waiting for endpoint
+PASS New result clears timeout warning
+PASS Each line is saved before session completion
+PASS One start, one line and one summary logged
+PASS Log contains acoustic averages
+PASS Log preserves gaze score
+PASS Completed summary distinguishable
+PASS Interrupted session is not recorded as completed
+PASS Log failure is exposed without crashing training
+PASS Empty socket returns immediately
+PASS UDP packet order and invalid-packet discard 0
+PASS UDP packet order and invalid-packet discard 1
+PASS Both datagrams consumed
+PASS Disposal releases port for next session
+52 checks passed.
+﻿

@@ -1,43 +1,47 @@
 # Presentation
 
-Unity 角色扮演式演讲训练项目，使用 VoiceAD 的 UDP 分段结果自动完成逐句训练。
+Unity 6000.3.7f1 演讲训练项目。`Main` 是唯一流程入口。
 
-## 使用流程
+## 使用
 
-1. 在 VoiceAD 目录运行 `run.ps1`。`config.py` 中 UDP 默认开启，目标为 `127.0.0.1:5005`。
-2. 运行 Unity 的 `Assets/Scenes/SampleScene.unity`，立即显示第一句台词。
-3. 按提示朗读并看向目标 NPC。无需按 Enter；VoiceAD 检测到发声后的连续静音后，Unity 自动结算并显示下一句。
-4. 全部台词结束后显示四维报告，日志写入 `Application.persistentDataPath/Sessions`。
+1. 打开 `Assets/Scenes/SampleScene.unity`，进入 Play Mode。
+2. 按 **Enter**（主键盘或小键盘）开始训练。
+3. VoiceAD 向 `127.0.0.1:5005` 发送分析结果；按台词朗读并看向描边的 NPC。
+4. 收到本次发声的结束包后自动评分、换句，10 句结束显示四维报告。训练中 Enter 不跳句，结束后停留在报告页；再次训练需重新进入 Play Mode。
 
-VoiceAD 默认在连续静音约 0.45 秒时结束一次发声。因此句中较长停顿也会结算当前台词；需要更长停顿时，在 VoiceAD 中调整 `END_SILENCE_SECONDS`。这属于声音结束检测，不检查台词是否完整朗读，不包含 ASR。
+VoiceAD 的静音结束检测决定换句时机；本项目不检查朗读内容是否完整，不包含 ASR。未收到结束包时保持当前台词，超过 Main 的等待阈值只显示提示。
 
-连续讲话达到约 3 秒时，VoiceAD 只提交中间片段，Unity 继续停留在当前台词，直到收到 `speech_ended: true`。最终结果在对应片段完成推理后发送，结算会包含尾段。
+## 代码和配置
 
-## 情绪与评分
+所有运行代码位于 `Assets/Presentation/Scripts`：
 
-- 仅用 Arousal / Dominance（A/D，范围 `[-1,1]`）评分。VoiceAD 仍输出 V，但 Unity 不读取、不记录、不评分。
-- A 表示活跃程度，D 表示支配感。训练提示将高/低 D 简化表达为“自信/犹豫”，它是声学维度估计，不是人格或实际能力判断。
-- 四种目标：平静自信、活跃自信、活跃犹豫、平静犹豫。原台词枚举数值顺序保持不变，现有正向台词改为自信目标。
-- 表达、语速、音量、视线各占 25%。A/D 按目标方向评分，语速/音量按区间及偏离程度评分。
-- 默认中速区间为 `2.0–5.0` 响度峰/秒，响度为 `0.3–0.6`，与 VoiceAD 默认配置一致；不是字数/秒或分贝。修改 VoiceAD 的区间时，也需更新 Unity 的评分资源。
-- 一次发声内按各片段的分析时长加权汇总。取消固定窗口预热、最低 4 秒限制和旧样本超时评分规则，语音有效性由 VoiceAD VAD 把关。
-- 视线从台词显示开始检测；不等待延迟到达的分析结果。语音连续匹配时 NPC 点头，会话高分时鼓掌。
+| 模块 | 职责 |
+| --- | --- |
+| `Main.cs` | Enter 开始、视线检测、逐句结算和结束 |
+| `Data` | 台词、目标及重音/停顿格式 |
+| `Voice` | 非阻塞 UDP 接收和输入校验 |
+| `Scoring` | 分段去重、时长加权、评分及一条建议 |
+| `Audience` | NPC 描边图层、平滑转头、点头和鼓掌 |
+| `UI` | 台词、状态和报告 |
+| `Player` | WASD 和鼠标视角 |
+| `Logging` | 逐句 JSONL 日志 |
+| `Rendering` | 沿用原项目的轮廓渲染 |
 
-配置在 `Assets/Resources/Scoring/DefaultScoringProfile.asset`；台词在 `Assets/Resources/Texts/Texts.asset`。
+- 台词：`Assets/Presentation/Data/Speech.asset`，保留原 10 句。
+- 评分：`Assets/Presentation/Data/DefaultScoringProfile.asset`，训练前调整权重、区间及鼓掌阈值。默认表达、语速、音量、视线各占 25%。
+- 日志：`Application.persistentDataPath/Sessions/*.jsonl`，记录参数、每句结果及完成/中断状态；不保存音频。写入失败会在界面提示。
+- 场景通过 Inspector 引用连接 Main、TrainingView、摄像机和 6 个 AudienceRole。描边沿用 PC_Renderer、RoleOutline 图层 6 及现有两个 Shader。
 
-## UDP 协议
+## UDP
 
-UTF-8 JSON 根对象：
+发送 UTF-8 JSON，所需字段如下：
 
 ```json
 {
   "A": 0.4,
   "D": 0.3,
-  "V": -0.1,
   "speech_rate": 3.5,
   "loudness": 0.45,
-  "speech_rate_level": 0,
-  "loudness_level": 0,
   "utterance_started_at": 1790643600.25,
   "segment_index": 1,
   "segment_seconds": 1.2,
@@ -45,27 +49,14 @@ UTF-8 JSON 根对象：
 }
 ```
 
-- `utterance_started_at`：同一次发声固定不变的 Unix 秒数，使用本机时钟；用于分组并过滤台词显示前开始的旧发声。
-- `segment_index`：本次发声内从 1 开始的片段编号；队列过载时可能不连续。
-- `segment_seconds`：这一片段送入模型的音频时长，含保留的静音；不是纯发声时长。
-- `speech_ended`：只有连续静音或文件 EOF 才为 true；最大长度切片为 false。
-- 两个等级字段为整数 `-1/0/1`。
+`utterance_started_at` 使用本机当前 Unix 秒数，同一次发声保持不变；示例时间需替换。A/D 范围为 [-1,1]；语速是响度峰/秒，响度不是分贝。V 和等级字段可随 VoiceAD 原协议发送，但不参与评分。
 
-恰在最大切片处停止讲话时，结束包可能重复最后一个片段编号。Unity 只统计一次该片段，但仍处理结束标记。UDP 同一帧到达的多个包按接收顺序处理，上一句的重复或延迟包不会推进下一句。
-
-VoiceAD 继续使用有界队列，过载或 UDP 丢包可能遗漏片段。若未收到结束包，Unity 保持当前台词；下一次发声会替换未完成的样本，不把两次发声混合评分。等待下一句显示后再开始朗读，避免下一次发声被当作显示前的旧数据。
-
-## 代码职责
-
-- `AnalysisUdpReceiver`：接收和校验 VoiceAD JSON，主线程按序分发。
-- `PresentationTaskController`：唯一流程控制器，收集片段、结束时结算和推进。
-- `PerformanceEvaluator`：A/D、语速、响度和视线评分。
-- `AudienceFeedbackController` / `AudienceView`：NPC 反馈及视线检测。
-- `UIManager`：台词、状态和报告显示。
-- `SessionLogWriter`：保存 A/D、声学值、分段元数据和评分，不保存音频或转写文本。
-
-场景依赖沿用 Inspector 引用，不自动挂载组件或搜索全场景。已移除旧分析端协议、V 评分以及 Enter 确认流程。
+中间片段使用 `speech_ended: false`，只在发声结束时发送 true。按片段时长加权，重复编号只计一次，重复编号的结束标记仍有效。旧发声和重复结束包不会推进下一句。新发声替换未完成的旧发声；UDP 不重传或恢复乱序，下一句显示后再朗读。
 
 ## 验证
 
-`Assets/Tests/Editor/PerformanceEvaluatorTests.cs` 覆盖 A/D 评分、短句、加权去重、协议校验和自动推进，包括最大长度切片、重复结束包、旧数据及会话完成。
+- 逻辑检查：项目根目录执行 `& ./Tools/Verification/Verify.ps1`，复用本机 Unity 程序集；需要现有 `Assembly-CSharp.csproj`。
+- 完整训练：保存场景、停止 Play Mode 后，选择菜单 **Presentation > Verify UDP Training**。测试通过 Input System 注入 Enter，发送真实回环 UDP，并用实际摄像机射线完成视线检测，自动跑完 10 句再退出 Play Mode。
+- 验证结果位于 `ValidationResults/UDP/result.json`，模拟训练日志为 `ValidationResults/UDP/session.jsonl`。验证代码仅在编辑器运行，不进入玩家构建。模拟的目标匹配数据应得到 100 分，不代表真人语音识别准确率。
+
+替换前项目已备份至 `D:\MyProjects\Presentation_Backup_20260929_210323`，包含原代码、资源、设置、Git 和 Rewrite；`backup-manifest.csv` 提供文件哈希。

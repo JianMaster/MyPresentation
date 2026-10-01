@@ -1,0 +1,144 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ff995846da94e889bddba66b62b95a8, type: 3}
+  m_Name: Speech
+  m_EditorClassIdentifier: Assembly-CSharp::PresentationRewrite.SpeechText
+  lines:
+  - lineId: company-01
+    text: 皆さん、本日はお忙しい中、お集まりいただきありがとうございます。
+    deliveryStyle: 0
+    speed: 1
+    volume: 1
+    targetRoleIndex: -1
+    emphasis:
+    - 本日
+    - ありがとうございます
+    pause_after:
+    - 皆さん
+    - 本日はお忙しい中
+  - lineId: company-02
+    text: 私たちを取り巻く環境は、日々大きく変化しています。
+    deliveryStyle: 0
+    speed: 1
+    volume: 1
+    targetRoleIndex: -1
+    emphasis:
+    - 環境
+    - 日々
+    - 大きく変化
+    pause_after:
+    - 私たちを取り巻く環境は
+    - 日々
+  - lineId: company-03
+    text: しかし、どのような時代であっても、私たちが大切にすべきことは変わりません。
+    deliveryStyle: 0
+    speed: 0
+    volume: 1
+    targetRoleIndex: -1
+    emphasis:
+    - どのような時代
+    - 大切にすべきこと
+    - 変わりません
+    pause_after:
+    - しかし
+    - どのような時代であっても
+  - lineId: company-04
+    text: それは、お客様に誠実に向き合い、仲間を信頼し、一つひとつの仕事に責任を持つことです。
+    deliveryStyle: 0
+    speed: 0
+    volume: 1
+    targetRoleIndex: -1
+    emphasis:
+    - お客様
+    - 誠実
+    - 仲間
+    - 責任
+    pause_after:
+    - それは
+    - お客様に誠実に向き合い
+    - 仲間を信頼し
+  - lineId: company-05
+    text: 成果は、一人の力だけで生まれるものではありません。
+    deliveryStyle: 0
+    speed: 1
+    volume: 1
+    targetRoleIndex: -1
+    emphasis:
+    - 成果
+    - 一人の力だけ
+    - ではありません
+    pause_after:
+    - 成果は
+    - 一人の力だけで
+  - lineId: company-06
+    text: 現場で努力する皆さん一人ひとりの積み重ねが、会社の信頼を支えています。
+    deliveryStyle: 0
+    speed: 1
+    volume: 1
+    targetRoleIndex: -1
+    emphasis:
+    - 皆さん一人ひとり
+    - 積み重ね
+    - 会社の信頼
+    pause_after:
+    - 現場で努力する
+    - 皆さん一人ひとりの積み重ねが
+  - lineId: company-07
+    text: これからも私たちは、変化を恐れず、前向きに挑戦し続けます。
+    deliveryStyle: 1
+    speed: 1
+    volume: 2
+    targetRoleIndex: -1
+    emphasis:
+    - これからも
+    - 変化を恐れず
+    - 挑戦し続けます
+    pause_after:
+    - これからも私たちは
+    - 変化を恐れず
+  - lineId: company-08
+    text: そして、より良い価値を社会に届けられる会社を目指してまいります。
+    deliveryStyle: 1
+    speed: 1
+    volume: 1
+    targetRoleIndex: -1
+    emphasis:
+    - より良い価値
+    - 社会
+    - 目指してまいります
+    pause_after:
+    - そして
+    - より良い価値を
+  - lineId: company-09
+    text: 皆さんと共に、次の一歩を力強く進めていきたいと思います。
+    deliveryStyle: 1
+    speed: 0
+    volume: 2
+    targetRoleIndex: -1
+    emphasis:
+    - 皆さんと共に
+    - 次の一歩
+    - 力強く
+    pause_after:
+    - 皆さんと共に
+    - 次の一歩を
+  - lineId: company-10
+    text: 本日もどうぞよろしくお願いいたします。
+    deliveryStyle: 0
+    speed: 0
+    volume: 1
+    targetRoleIndex: -1
+    emphasis:
+    - 本日
+    - よろしくお願いいたします
+    pause_after:
+    - 本日も

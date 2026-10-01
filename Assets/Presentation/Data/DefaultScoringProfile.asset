@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07e436622f4644ddaa736e8fb8fd7037, type: 3}
+  m_Name: DefaultScoringProfile
+  m_EditorClassIdentifier: Assembly-CSharp::PresentationRewrite.ScoringProfile
+  settings:
+    weights: {x: 0.25, y: 0.25, z: 0.25, w: 0.25}
+    speedBand: {x: 2, y: 5}
+    volumeBand: {x: 0.3, y: 0.6}
+    speedFalloff: 3
+    volumeFalloff: 0.3
+    applauseThreshold: 80
