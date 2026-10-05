@@ -35,8 +35,7 @@ namespace PresentationRewrite {
 
         public void ShowLine(SpeechLine line, int index, int count, string target) {
             _body = $"台詞 {index + 1} / {count}\n" +
-                $"[{DeliveryNames[(int)line.deliveryStyle]}] [{SpeedNames[(int)line.speed]}] [{VolumeNames[(int)line.volume]}]\n\n" +
-                $"{line.FormattedText()}\n\n視線の対象：{target}";
+                $"[{DeliveryNames[(int)line.deliveryStyle]}] [{SpeedNames[(int)line.speed]}] [{VolumeNames[(int)line.volume]}]\n\n";
             _status = null;
         }
 

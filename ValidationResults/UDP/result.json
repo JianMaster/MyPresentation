@@ -8,6 +8,7 @@
   "keyboard": "Enter starts; NumpadEnter while active does not advance",
   "transport": "Actual UDP 127.0.0.1:5005",
   "gaze": "Actual Physics.Raycast",
+  "rendererResources": "Repeated Create releases old materials; Dispose releases final materials",
   "editorIssues": [],
-  "utc": "2026-09-30T06:02:30.9399534Z"
+  "utc": "2026-10-01T00:53:58.5745306Z"
 }

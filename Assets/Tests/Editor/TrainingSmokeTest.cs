@@ -44,6 +44,7 @@ public static class TrainingSmokeTest {
             if (EditorApplication.isPlaying) throw new Exception("Stop Play Mode before running verification.");
             var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
             if (scene.isDirty) throw new Exception("Save scene changes before verification.");
+            CheckRendererResources();
             EditorSceneManager.OpenScene("Assets/Scenes/SampleScene.unity");
             Directory.CreateDirectory("ValidationResults/UDP");
             File.WriteAllText("ValidationResults/UDP/result.json", "{\"status\":\"running\"}");
@@ -173,6 +174,7 @@ public static class TrainingSmokeTest {
                         unity = Application.unityVersion, scene = "Assets/Scenes/SampleScene.unity",
                         keyboard = "Enter starts; NumpadEnter while active does not advance",
                         transport = "Actual UDP 127.0.0.1:5005", gaze = "Actual Physics.Raycast",
+                        rendererResources = "Repeated Create releases old materials; Dispose releases final materials",
                         editorIssues = EditorIssues.ToArray(), utc = DateTime.UtcNow
                     }, Formatting.Indented));
                     Debug.Log("UDP_SMOKE_SUCCESS: " + _checks + " checks, " + _line + " lines, score 100.");
@@ -181,6 +183,27 @@ public static class TrainingSmokeTest {
             }
         }
         catch (Exception exception) { Fail(exception); }
+    }
+
+    private static void CheckRendererResources() {
+        var feature = ScriptableObject.CreateInstance<RoleOutlineRendererFeature>();
+        Material mask = null, outline = null;
+        try {
+            for (int i = 0; i < 3; i++) {
+                feature.Create();
+                if (mask != null || outline != null) throw new Exception("Renderer rebuild leaked previous materials.");
+                mask = (Material)typeof(RoleOutlineRendererFeature).GetField("_maskMaterial", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(feature);
+                outline = (Material)typeof(RoleOutlineRendererFeature).GetField("_outlineMaterial", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(feature);
+                if (mask == null || outline == null) throw new Exception("Renderer materials missing after rebuild.");
+            }
+            feature.Dispose();
+            if (mask != null || outline != null) throw new Exception("Renderer disposal leaked materials.");
+            Debug.Log("RENDERER_RESOURCE_CHECK_PASS: 3 rebuilds and disposal");
+        }
+        finally {
+            feature.Dispose();
+            UnityEngine.Object.DestroyImmediate(feature);
+        }
     }
 
     private static VoicePacket PacketFor(int index) {

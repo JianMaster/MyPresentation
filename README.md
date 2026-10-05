@@ -30,7 +30,7 @@ VoiceAD 的静音结束检测决定换句时机；本项目不检查朗读内容
 - 台词：`Assets/Presentation/Data/Speech.asset`，保留原 10 句。
 - 评分：`Assets/Presentation/Data/DefaultScoringProfile.asset`，训练前调整权重、区间及鼓掌阈值。默认表达、语速、音量、视线各占 25%。
 - 日志：`Application.persistentDataPath/Sessions/*.jsonl`，记录参数、每句结果及完成/中断状态；不保存音频。写入失败会在界面提示。
-- 场景通过 Inspector 引用连接 Main、TrainingView、摄像机和 6 个 AudienceRole。描边沿用 PC_Renderer、RoleOutline 图层 6 及现有两个 Shader。
+- 场景通过 Inspector 引用连接 Main、TrainingView、摄像机和 6 个 AudienceRole。描边使用 PC_Renderer、RoleOutline 图层 6 及现有两个 Shader，仅保留当前 Unity 6 的 RenderGraph 路径。
 
 ## UDP
 
@@ -55,8 +55,8 @@ VoiceAD 的静音结束检测决定换句时机；本项目不检查朗读内容
 
 ## 验证
 
-- 逻辑检查：项目根目录执行 `& ./Tools/Verification/Verify.ps1`，复用本机 Unity 程序集；需要现有 `Assembly-CSharp.csproj`。
-- 完整训练：保存场景、停止 Play Mode 后，选择菜单 **Presentation > Verify UDP Training**。测试通过 Input System 注入 Enter，发送真实回环 UDP，并用实际摄像机射线完成视线检测，自动跑完 10 句再退出 Play Mode。
+- 逻辑检查：项目根目录执行 `& ./Tools/Verification/Verify.ps1`，复用本机 Unity 程序集；需要现有 `Assembly-CSharp.csproj`，临时产物写入 `Library/PresentationVerification`。
+- 完整训练：保存场景、停止 Play Mode 后，选择菜单 **Presentation > Verify UDP Training**。先检查描边材质重复创建和释放，再通过 Input System 注入 Enter、发送真实回环 UDP，并用实际摄像机射线完成视线检测，自动跑完 10 句再退出 Play Mode。
 - 验证结果位于 `ValidationResults/UDP/result.json`，模拟训练日志为 `ValidationResults/UDP/session.jsonl`。验证代码仅在编辑器运行，不进入玩家构建。模拟的目标匹配数据应得到 100 分，不代表真人语音识别准确率。
 
 替换前项目已备份至 `D:\MyProjects\Presentation_Backup_20260929_210323`，包含原代码、资源、设置、Git 和 Rewrite；`backup-manifest.csv` 提供文件哈希。

@@ -1,11 +1,11 @@
 warning CS1701: 假定“Newtonsoft.Json”使用的程序集引用“netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51”与“netstandard”的标识“netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51”匹配，您可能需要提供运行时策略
 Assets\Presentation\Scripts\Player\PlayerController.cs(6,44): warning CS0649: 从未对字段“PlayerController._cameraRoot”赋值，字段将一直保持其默认值 null
 Assets\Presentation\Scripts\Main.cs(13,49): warning CS0649: 从未对字段“Main._audience”赋值，字段将一直保持其默认值 null
+Assets\Presentation\Scripts\UI\TrainingView.cs(6,43): warning CS0649: 从未对字段“TrainingView._text”赋值，字段将一直保持其默认值 null
+Assets\Presentation\Scripts\Main.cs(12,41): warning CS0649: 从未对字段“Main._camera”赋值，字段将一直保持其默认值 null
+Assets\Presentation\Scripts\Main.cs(11,47): warning CS0649: 从未对字段“Main._view”赋值，字段将一直保持其默认值 null
 Assets\Presentation\Scripts\Main.cs(10,49): warning CS0649: 从未对字段“Main._profile”赋值，字段将一直保持其默认值 null
 Assets\Presentation\Scripts\Main.cs(9,45): warning CS0649: 从未对字段“Main._speech”赋值，字段将一直保持其默认值 null
-Assets\Presentation\Scripts\Main.cs(12,41): warning CS0649: 从未对字段“Main._camera”赋值，字段将一直保持其默认值 null
-Assets\Presentation\Scripts\UI\TrainingView.cs(6,43): warning CS0649: 从未对字段“TrainingView._text”赋值，字段将一直保持其默认值 null
-Assets\Presentation\Scripts\Main.cs(11,47): warning CS0649: 从未对字段“Main._view”赋值，字段将一直保持其默认值 null
 Runtime compilation passed against the current Unity assemblies.
 warning CS1701: 假定“Newtonsoft.Json”使用的程序集引用“netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51”与“netstandard”的标识“netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51”匹配，您可能需要提供运行时策略
 ﻿PASS VoiceAD A/D packet accepted; V ignored

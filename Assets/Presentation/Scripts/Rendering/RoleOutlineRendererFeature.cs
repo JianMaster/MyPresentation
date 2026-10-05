@@ -5,9 +5,6 @@ using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering.RenderGraphModule.Util;
 using UnityEngine.Rendering.Universal;
 
-#pragma warning disable 0618
-#pragma warning disable 0672
-
 public class RoleOutlineRendererFeature : ScriptableRendererFeature
 {
     [System.Serializable]
@@ -38,6 +35,7 @@ public class RoleOutlineRendererFeature : ScriptableRendererFeature
 
     public override void Create()
     {
+        Dispose(true);
         _maskMaterial = CoreUtils.CreateEngineMaterial(Shader.Find("Hidden/RoleOutlineMask"));
         _outlineMaterial = CoreUtils.CreateEngineMaterial(Shader.Find("Hidden/RoleOutlineScreen"));
 
@@ -60,8 +58,6 @@ public class RoleOutlineRendererFeature : ScriptableRendererFeature
     {
         CoreUtils.Destroy(_maskMaterial);
         CoreUtils.Destroy(_outlineMaterial);
-        _maskPass?.Dispose();
-        _outlinePass?.Dispose();
     }
 
     private class MaskPass : ScriptableRenderPass
@@ -78,8 +74,6 @@ public class RoleOutlineRendererFeature : ScriptableRendererFeature
         private readonly Settings _settings;
         private readonly Material _maskMaterial;
         private readonly List<ShaderTagId> _shaderTagIds = new List<ShaderTagId>(ShaderTags);
-        private FilteringSettings _filteringSettings;
-        private RTHandle _maskTexture;
 
         private class PassData
         {
@@ -90,43 +84,6 @@ public class RoleOutlineRendererFeature : ScriptableRendererFeature
         {
             _settings = settings;
             _maskMaterial = maskMaterial;
-        }
-
-        public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
-        {
-            RenderTextureDescriptor descriptor = cameraTextureDescriptor;
-            descriptor.depthBufferBits = 0;
-            descriptor.msaaSamples = 1;
-            descriptor.colorFormat = RenderTextureFormat.R8;
-
-            RenderingUtils.ReAllocateHandleIfNeeded(
-                ref _maskTexture,
-                descriptor,
-                FilterMode.Point,
-                TextureWrapMode.Clamp,
-                name: "_RoleOutlineMaskTexture"
-            );
-            ConfigureTarget(_maskTexture);
-            ConfigureClear(ClearFlag.Color, Color.clear);
-        }
-
-        public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
-        {
-            _filteringSettings = new FilteringSettings(RenderQueueRange.all, _settings.roleLayerMask);
-
-            DrawingSettings drawingSettings = CreateDrawingSettings(
-                _shaderTagIds,
-                ref renderingData,
-                renderingData.cameraData.defaultOpaqueSortFlags
-            );
-            drawingSettings.overrideMaterial = _maskMaterial;
-
-            context.DrawRenderers(renderingData.cullResults, ref drawingSettings, ref _filteringSettings);
-
-            CommandBuffer cmd = CommandBufferPool.Get("Role Outline Mask");
-            cmd.SetGlobalTexture(MaskTextureId, _maskTexture);
-            context.ExecuteCommandBuffer(cmd);
-            CommandBufferPool.Release(cmd);
         }
 
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
@@ -191,10 +148,6 @@ public class RoleOutlineRendererFeature : ScriptableRendererFeature
             }
         }
 
-        public void Dispose()
-        {
-            _maskTexture?.Release();
-        }
     }
 
     private class OutlinePass : ScriptableRenderPass
@@ -204,41 +157,11 @@ public class RoleOutlineRendererFeature : ScriptableRendererFeature
 
         private readonly Settings _settings;
         private readonly Material _outlineMaterial;
-        private RTHandle _temporaryColorTexture;
 
         public OutlinePass(Settings settings, Material outlineMaterial)
         {
             _settings = settings;
             _outlineMaterial = outlineMaterial;
-        }
-
-        public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
-        {
-            RenderTextureDescriptor descriptor = cameraTextureDescriptor;
-            descriptor.depthBufferBits = 0;
-
-            RenderingUtils.ReAllocateHandleIfNeeded(
-                ref _temporaryColorTexture,
-                descriptor,
-                FilterMode.Bilinear,
-                TextureWrapMode.Clamp,
-                name: "_RoleOutlineTemporaryColorTexture"
-            );
-        }
-
-        public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
-        {
-            CommandBuffer cmd = CommandBufferPool.Get("Role Outline");
-            RTHandle cameraColorTarget = renderingData.cameraData.renderer.cameraColorTargetHandle;
-
-            _outlineMaterial.SetColor(OutlineColorId, _settings.outlineColor);
-            _outlineMaterial.SetFloat(OutlineWidthId, _settings.outlineWidth);
-
-            Blitter.BlitCameraTexture(cmd, cameraColorTarget, _temporaryColorTexture);
-            Blitter.BlitCameraTexture(cmd, _temporaryColorTexture, cameraColorTarget, _outlineMaterial, 0);
-
-            context.ExecuteCommandBuffer(cmd);
-            CommandBufferPool.Release(cmd);
         }
 
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
@@ -281,12 +204,5 @@ public class RoleOutlineRendererFeature : ScriptableRendererFeature
             renderGraph.AddBlitPass(parameters, "Role Outline Composite");
         }
 
-        public void Dispose()
-        {
-            _temporaryColorTexture?.Release();
-        }
     }
 }
-
-#pragma warning restore 0672
-#pragma warning restore 0618

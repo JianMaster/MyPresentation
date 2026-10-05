@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $runtimeRoot = Join-Path $projectRoot 'Assets/Presentation'
-$output = Join-Path $projectRoot 'Temp/PresentationVerification'
+$output = Join-Path $projectRoot 'Library/PresentationVerification'
 New-Item -ItemType Directory -Force -Path $output | Out-Null
 
 # Reuse the current project's real Unity/package assemblies without importing the runtime scripts.
