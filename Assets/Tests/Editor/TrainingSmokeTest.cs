@@ -28,6 +28,12 @@ public static class TrainingSmokeTest {
     private static VoicePacket _packet;
     private static TMP_Text _text;
     private static int _step, _line, _checks;
+    private static int _round, _remaining, _events;
+    private static bool _event;
+    private static AudienceRole _eventTarget;
+    private static float _restoreAt;
+    private static UnityEngine.Random.State _randomState;
+    private static readonly List<object> Rounds = new List<object>();
     private static double _nextTick, _deadline;
     private static readonly List<string> Errors = new List<string>();
     private static readonly List<string> EditorIssues = new List<string>();
@@ -73,6 +79,10 @@ public static class TrainingSmokeTest {
                 EditorIssues.Clear();
                 Application.logMessageReceived += CaptureError;
                 _step = _line = _checks = 0;
+                _round = 0;
+                Rounds.Clear();
+                _randomState = UnityEngine.Random.state;
+                Read<Camera>("_camera").transform.rotation = Quaternion.LookRotation(Vector3.up);
                 _nextTick = EditorApplication.timeSinceStartup + 1;
                 _deadline = EditorApplication.timeSinceStartup + 120;
                 EditorApplication.update += Tick;
@@ -93,6 +103,10 @@ public static class TrainingSmokeTest {
             if (EditorApplication.timeSinceStartup > _deadline) throw new Exception("Validation timeout.");
             switch (_step++) {
                 case 0:
+                    _events = 0;
+                    int count = Read<int>("_gazeEventCount");
+                    _remaining = count < 0 ? Read<PresentationRewrite.SpeechText>("_speech").lines.Length / 3 : count;
+                    Check(Read<AudienceRole[]>("_audience").All(r => RoleRead<Transform>(r, "_defaultTarget")?.name == "Screen"), "All NPCs have a default Screen reference");
                     Check(Read<int>("_line") == -1 && Read<VoiceReceiver>("_voice") == null, "Before Enter: no training or receiver");
                     _packet = PacketFor(0);
                     _packet.speech_ended = true;
@@ -100,6 +114,7 @@ public static class TrainingSmokeTest {
                     break;
                 case 1:
                     Check(Read<int>("_line") == -1, "UDP before Enter cannot advance training");
+                    SetNextDecision(DecisionForLine(0));
                     InputSystem.QueueStateEvent(_keyboard, new KeyboardState(Key.Enter));
                     break;
                 case 2:
@@ -115,7 +130,12 @@ public static class TrainingSmokeTest {
                     break;
                 case 4:
                     var target = Read<AudienceRole>("_target");
-                    if (!Read<bool>("_looked")) Check(target.gameObject.layer == 6, "Target highlighted before gaze");
+                    _event = _remaining > 0 && DecisionForLine(_line);
+                    if (_event) { _remaining--; _events++; }
+                    Check(Read<int>("_gazeEventsRemaining") == _remaining, "Each line makes one random decision only below the event cap");
+                    _eventTarget = target;
+                    _restoreAt = RoleRead<float>(target, "_restoreAt");
+                    if (_event) Check(target.gameObject.layer == 6 && RoleRead<Transform>(target, "_target") == Read<Camera>("_camera").transform, "Triggered NPC looks at player and is highlighted");
                     var bounds = target.GetComponent<Collider>().bounds;
                     var camera = Read<Camera>("_camera");
                     camera.transform.position = bounds.center - Vector3.forward;
@@ -125,7 +145,9 @@ public static class TrainingSmokeTest {
                     break;
                 case 5:
                     Check(Read<bool>("_looked"), "Real camera ray completes gaze on line " + (_line + 1));
-                    Check(Read<AudienceRole>("_target").gameObject.layer != 6, "Gaze clears target highlight");
+                    Check(RoleRead<float>(_eventTarget, "_nodTime") >= 0, "Gaze still triggers the original nod feedback");
+                    if (_event) Check(_eventTarget.gameObject.layer == 6 && RoleRead<float>(_eventTarget, "_restoreAt") == _restoreAt, "Gaze and nod do not cancel or restart NPC timer");
+                    Read<Camera>("_camera").transform.rotation = Quaternion.LookRotation(Vector3.up);
                     Send();
                     break;
                 case 6:
@@ -138,10 +160,13 @@ public static class TrainingSmokeTest {
                 case 7:
                     Check(Read<int>("_line") == _line, "Tail without endpoint does not advance");
                     _packet.speech_ended = true;
+                    SetNextDecision(DecisionForLine(_line + 1));
                     Send();
                     break;
                 case 8:
                     Check(Read<int>("_line") == _line + 1, "Endpoint advances exactly one line");
+                    if (_event) Check(Time.time < _restoreAt && RoleRead<Transform>(_eventTarget, "_target") == Read<Camera>("_camera").transform
+                        && _eventTarget.gameObject.layer == 6, "Voice endpoint advances immediately while NPC continues its own timer");
                     Send();
                     break;
                 case 9:
@@ -164,25 +189,66 @@ public static class TrainingSmokeTest {
                     Check(Math.Abs((float)final["total"] - 100f) < 0.01f, "Matching voice and gaze produce total 100");
                     foreach (var row in records.Where(x => (string)x["type"] == "line"))
                         Check(Math.Abs((float)row["total"] - 100f) < 0.01f, "Each line scored 100");
+                    int expectedEvents = _round == 0 ? 3 : _round == 1 ? 2 : 0;
+                    Check(_events == expectedEvents, "Random misses are not forced to fill the quota; event cap is respected");
+                    Rounds.Add(new { cap = Read<int>("_gazeEventCount"), events = _events, remaining = _remaining, total = (float)final["total"] });
                     Directory.CreateDirectory("ValidationResults/UDP");
-                    File.Copy(log.FilePath, "ValidationResults/UDP/session.jsonl", true);
+                    File.Copy(log.FilePath, _round == 0 ? "ValidationResults/UDP/session.jsonl" : $"ValidationResults/UDP/session-{_round}.jsonl", true);
                     break;
                 case 11:
                     Check(Errors.Count == 0, "No runtime errors: " + string.Join(" | ", Errors));
+                    if (_round < 3) {
+                        _round++;
+                        _main.enabled = false;
+                        var config = new SerializedObject(_main);
+                        config.FindProperty("_gazeEventCount").intValue = _round == 1 ? 2 : _round == 2 ? 3 : 0;
+                        config.ApplyModifiedPropertiesWithoutUndo();
+                        _main.enabled = true;
+                        _step = _line = 0;
+                        break;
+                    }
+                    _main.enabled = false;
+                    _eventTarget = Read<AudienceRole[]>("_audience")[0];
+                    _eventTarget.LookAt(Read<Camera>("_camera").transform);
+                    _restoreAt = RoleRead<float>(_eventTarget, "_restoreAt");
+                    Check(Math.Abs(_restoreAt - Time.time - 5f) < 0.05f, "NPC owns the five-second timer");
+                    break;
+                case 12:
+                    if (Time.time < _restoreAt) {
+                        Check(_eventTarget.gameObject.layer == 6, "NPC timer runs while Main is disabled");
+                        _step = 12;
+                        break;
+                    }
+                    Check(RoleRead<Transform>(_eventTarget, "_target") == RoleRead<Transform>(_eventTarget, "_defaultTarget")
+                        && _eventTarget.gameObject.layer != 6, "NPC restores Screen by itself after five seconds");
+                    Check(Errors.Count == 0, "No runtime errors after NPC timer");
                     File.WriteAllText("ValidationResults/UDP/result.json", JsonConvert.SerializeObject(new {
-                        success = true, checks = _checks, completedLines = _line, totalScore = 100,
+                        success = true, checks = _checks, completedLines = _line * Rounds.Count, totalScore = 100, rounds = Rounds,
                         unity = Application.unityVersion, scene = "Assets/Scenes/SampleScene.unity",
                         keyboard = "Enter starts; NumpadEnter while active does not advance",
-                        transport = "Actual UDP 127.0.0.1:5005", gaze = "Actual Physics.Raycast",
+                        transport = "Actual UDP 127.0.0.1:5005", gaze = "Per-line random check with cap; NPC owns timer; immediate voice advance; nod preserved; original scoring",
                         rendererResources = "Repeated Create releases old materials; Dispose releases final materials",
                         editorIssues = EditorIssues.ToArray(), utc = DateTime.UtcNow
                     }, Formatting.Indented));
-                    Debug.Log("UDP_SMOKE_SUCCESS: " + _checks + " checks, " + _line + " lines, score 100.");
+                    Debug.Log("UDP_SMOKE_SUCCESS: " + _checks + " checks, 4 full sessions, original scoring preserved.");
                     Finish(0);
                     break;
             }
         }
         catch (Exception exception) { Fail(exception); }
+    }
+
+    private static T RoleRead<T>(AudienceRole role, string field) => (T)typeof(AudienceRole).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(role);
+    private static bool DecisionForLine(int line) => _round == 0 ? line % 2 == 0 : _round != 2;
+    private static void SetNextDecision(bool trigger) {
+        // Control only the random input, so both branches and the cap are deterministic.
+        for (int seed = 0; seed < 100; seed++) {
+            UnityEngine.Random.InitState(seed);
+            if ((UnityEngine.Random.value < 0.5f) != trigger) continue;
+            UnityEngine.Random.InitState(seed);
+            return;
+        }
+        throw new Exception("No seed found for random decision.");
     }
 
     private static void CheckRendererResources() {
@@ -247,6 +313,7 @@ public static class TrainingSmokeTest {
         Application.logMessageReceived -= CaptureError;
         _sender?.Dispose();
         if (_keyboard != null) {
+            UnityEngine.Random.state = _randomState;
             InputSystem.RemoveDevice(_keyboard);
             InputSystem.settings.backgroundBehavior = _background;
             InputSystem.settings.editorInputBehaviorInPlayMode = _editorInput;

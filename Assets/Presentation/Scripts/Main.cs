@@ -12,6 +12,9 @@ namespace PresentationRewrite {
         [SerializeField] private Camera _camera;
         [SerializeField] private AudienceRole[] _audience;
         [SerializeField, Min(1f)] private float _resultTimeout = 10f;
+        [SerializeField, Min(-1), Tooltip("-1：总台词数 / 3；0：关闭；正数：次数上限")]
+        private int _gazeEventCount = -1;
+        private int _gazeEventsRemaining;
 
         private VoiceReceiver _voice;
         private Utterance _utterance;
@@ -54,7 +57,6 @@ namespace PresentationRewrite {
             if (!_looked && Physics.Raycast(_camera.ViewportPointToRay(new Vector3(0.5f, 0.5f)), out var hit, 100f) &&
                 hit.transform.IsChildOf(_target.transform)) {
                 _looked = true;
-                _target.LookAt(null);
                 _target.Nod();
             }
 
@@ -83,6 +85,7 @@ namespace PresentationRewrite {
                 return;
             }
             _line = 0;
+            _gazeEventsRemaining = _gazeEventCount < 0 ? _speech.lines.Length / 3 : _gazeEventCount;
             _log = new SessionLog(Path.Combine(Application.persistentDataPath, "Sessions"), _profile.settings);
             ShowLine();
         }
@@ -94,8 +97,11 @@ namespace PresentationRewrite {
             _lastResultAt = Time.realtimeSinceStartup;
             int index = _speech.lines[_line].targetRoleIndex;
             _target = _audience[index >= 0 && index < _audience.Length ? index : _line % _audience.Length];
-            _target.LookAt(_camera.transform);
-            _view.ShowLine(_speech.lines[_line], _line, _speech.lines.Length, _target.name);
+            if (_gazeEventsRemaining > 0 && UnityEngine.Random.value < 0.5f) {
+                _gazeEventsRemaining--;
+                _target.LookAt(_camera.transform);
+            }
+            _view.ShowLine(_speech.lines[_line], _line, _speech.lines.Length);
             UpdateStatus();
         }
 
@@ -110,7 +116,6 @@ namespace PresentationRewrite {
             var scores = Scoring.Evaluate(_speech.lines[_line], _utterance.Mean, _looked, settings);
             _scores += scores;
             _log.Line(_line + 1, _speech.lines[_line], _utterance.Mean, scores, Scoring.Total(scores, settings));
-            _target.LookAt(null);
             _line++;
             if (_line < _speech.lines.Length) {
                 ShowLine();
@@ -133,7 +138,6 @@ namespace PresentationRewrite {
             }
             _voice?.Dispose();
             _voice = null;
-            if (_target != null) _target.LookAt(null);
         }
     }
 }

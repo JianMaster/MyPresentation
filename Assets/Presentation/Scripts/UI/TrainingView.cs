@@ -30,12 +30,14 @@ namespace PresentationRewrite {
             if (_status == status && _logError == logError) return;
             _status = status;
             _logError = logError;
-            _text.text = _body + "\n\n" + status + LogWarning(logError);
+            _text.text = _body + "\n" + status;
+                        //+ LogWarning(logError);
         }
 
-        public void ShowLine(SpeechLine line, int index, int count, string target) {
+        public void ShowLine(SpeechLine line, int index, int count) {
             _body = $"台詞 {index + 1} / {count}\n" +
-                $"[{DeliveryNames[(int)line.deliveryStyle]}] [{SpeedNames[(int)line.speed]}] [{VolumeNames[(int)line.volume]}]\n\n";
+                $"[{DeliveryNames[(int)line.deliveryStyle]}] [{SpeedNames[(int)line.speed]}] [{VolumeNames[(int)line.volume]}]\n" +
+                $"{line.FormattedText()}";
             _status = null;
         }
 

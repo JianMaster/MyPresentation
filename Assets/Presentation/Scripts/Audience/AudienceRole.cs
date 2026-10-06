@@ -3,6 +3,9 @@ using UnityEngine;
 namespace PresentationRewrite {
     [RequireComponent(typeof(Animator))]
     public sealed class AudienceRole : MonoBehaviour {
+        [SerializeField] private Transform _defaultTarget;
+        [SerializeField, Min(0.1f)] private float _lookDuration = 5f;
+        private float _restoreAt;
         [SerializeField, Range(0, 31)] private int _highlightLayer = 6;
         [SerializeField, Min(0.01f)] private float _lookTransition = 0.25f;
         private Animator _animator;
@@ -23,10 +26,12 @@ namespace PresentationRewrite {
             _layers = new int[_parts.Length];
             for (int i = 0; i < _parts.Length; i++) _layers[i] = _parts[i].gameObject.layer;
             _lookPosition = transform.position + transform.forward * 2f + Vector3.up;
+            LookAt(null);
         }
 
         public void LookAt(Transform target) {
-            _target = target;
+            _target = target != null ? target : _defaultTarget;
+            _restoreAt = target != null ? Time.time + _lookDuration : 0;
             // Reuse the existing RoleOutline layer, renderer feature and shaders.
             if (_parts == null) return;
             for (int i = 0; i < _parts.Length; i++) {
@@ -47,6 +52,7 @@ namespace PresentationRewrite {
         }
 
         private void Update() {
+            if (_restoreAt > 0 && Time.time >= _restoreAt) LookAt(null);
             _lookWeight = Mathf.MoveTowards(_lookWeight, _target == null ? 0f : 0.8f, Time.deltaTime / Mathf.Max(0.01f, _lookTransition));
             if (_target != null) {
                 _lookPosition = Vector3.SmoothDamp(_lookPosition, _target.position, ref _lookVelocity, _lookTransition);

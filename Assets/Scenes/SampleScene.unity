@@ -5357,6 +5357,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ab1b3752d51675746ac8263f72d453b9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PresentationRewrite.AudienceRole
+  _defaultTarget: {fileID: 1068441559}
+  _lookDuration: 5
   _highlightLayer: 6
   _lookTransition: 0.25
 --- !u!1 &957866104 stripped
@@ -5407,6 +5409,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ab1b3752d51675746ac8263f72d453b9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PresentationRewrite.AudienceRole
+  _defaultTarget: {fileID: 1068441559}
+  _lookDuration: 5
   _highlightLayer: 6
   _lookTransition: 0.25
 --- !u!1 &1341775428 stripped
@@ -5523,6 +5527,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ab1b3752d51675746ac8263f72d453b9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PresentationRewrite.AudienceRole
+  _defaultTarget: {fileID: 1068441559}
+  _lookDuration: 5
   _highlightLayer: 6
   _lookTransition: 0.25
 --- !u!1001 &1602720468
@@ -5634,6 +5640,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ab1b3752d51675746ac8263f72d453b9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PresentationRewrite.AudienceRole
+  _defaultTarget: {fileID: 1068441559}
+  _lookDuration: 5
   _highlightLayer: 6
   _lookTransition: 0.25
 --- !u!1001 &1744433755
@@ -5750,6 +5758,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ab1b3752d51675746ac8263f72d453b9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PresentationRewrite.AudienceRole
+  _defaultTarget: {fileID: 1068441559}
+  _lookDuration: 5
   _highlightLayer: 6
   _lookTransition: 0.25
 --- !u!1 &1900358717
@@ -5915,6 +5925,7 @@ MonoBehaviour:
   - {fileID: 1834045936}
   - {fileID: 1175356515}
   _resultTimeout: 10
+  _gazeEventCount: -1
 --- !u!114 &1907562674
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6253,6 +6264,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ab1b3752d51675746ac8263f72d453b9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PresentationRewrite.AudienceRole
+  _defaultTarget: {fileID: 1068441559}
+  _lookDuration: 5
   _highlightLayer: 6
   _lookTransition: 0.25
 --- !u!1001 &4810487910978211759
