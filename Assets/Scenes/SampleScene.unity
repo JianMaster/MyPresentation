@@ -5924,7 +5924,6 @@ MonoBehaviour:
   - {fileID: 887047179}
   - {fileID: 1834045936}
   - {fileID: 1175356515}
-  _resultTimeout: 10
   _gazeEventCount: -1
 --- !u!114 &1907562674
 MonoBehaviour:

@@ -21,7 +21,7 @@ namespace PresentationRewrite {
 
         private void Awake() {
             _animator = GetComponent<Animator>();
-            if (_animator.isHuman) _head = _animator.GetBoneTransform(HumanBodyBones.Head);
+            _head = _animator.GetBoneTransform(HumanBodyBones.Head);
             _parts = GetComponentsInChildren<Transform>(true);
             _layers = new int[_parts.Length];
             for (int i = 0; i < _parts.Length; i++) _layers[i] = _parts[i].gameObject.layer;
@@ -35,15 +35,14 @@ namespace PresentationRewrite {
             _target = target != null ? target : _defaultTarget;
             _restoreAt = target != null ? Time.time + _lookDuration : 0;
             // Reuse the existing RoleOutline layer, renderer feature and shaders.
-            if (_parts == null) return;
             for (int i = 0; i < _parts.Length; i++) {
-                if (_parts[i] != null) _parts[i].gameObject.layer = target != null ? _highlightLayer : _layers[i];
+                _parts[i].gameObject.layer = target != null ? _highlightLayer : _layers[i];
             }
         }
         public void Clap() => _animator.SetTrigger("Clap");
 
         public void Nod() {
-            if (_head == null || _nodTime >= 0) return;
+            if (_nodTime >= 0) return;
             _headRotation = _head.localRotation;
             _nodTime = 0;
         }
@@ -55,10 +54,8 @@ namespace PresentationRewrite {
 
         private void Update() {
             if (_restoreAt > 0 && Time.time >= _restoreAt) LookAt(null);
-            _lookWeight = Mathf.MoveTowards(_lookWeight, _target == null ? 0f : 0.8f, Time.deltaTime / Mathf.Max(0.01f, _lookTransition));
-            if (_target != null) {
-                _lookPosition = Vector3.SmoothDamp(_lookPosition, _target.position, ref _lookVelocity, _lookTransition);
-            }
+            _lookWeight = Mathf.MoveTowards(_lookWeight, 0.8f, Time.deltaTime / _lookTransition);
+            _lookPosition = Vector3.SmoothDamp(_lookPosition, _target.position, ref _lookVelocity, _lookTransition);
         }
 
         private void LateUpdate() {
@@ -76,7 +73,7 @@ namespace PresentationRewrite {
             LookAt(null);
             _lookWeight = 0;
             _lookVelocity = Vector3.zero;
-            if (_nodTime >= 0 && _head != null) _head.localRotation = _headRotation;
+            if (_nodTime >= 0) _head.localRotation = _headRotation;
             _nodTime = -1f;
         }
     }

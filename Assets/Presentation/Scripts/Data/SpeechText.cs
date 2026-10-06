@@ -18,12 +18,12 @@ namespace PresentationRewrite {
 
         public string FormattedText() {
             // ponytail: literal annotations match the authored script; use text spans if overlapping marks are needed.
-            string body = (text ?? string.Empty).Replace(",", "").Replace("、", "").Replace("，", "");
-            foreach (string pause in pause_after ?? Array.Empty<string>()) {
-                if (!string.IsNullOrEmpty(pause)) body = body.Replace(pause, pause + "/");
+            string body = text.Replace(",", "").Replace("、", "").Replace("，", "");
+            foreach (string pause in pause_after) {
+                body = body.Replace(pause, pause + "/");
             }
-            foreach (string word in emphasis ?? Array.Empty<string>()) {
-                if (!string.IsNullOrEmpty(word)) body = body.Replace(word, $"<color=#FFD54A>{word}</color>");
+            foreach (string word in emphasis) {
+                body = body.Replace(word, $"<color=#FFD54A>{word}</color>");
             }
             return body;
         }

@@ -2,6 +2,8 @@
 
 Unity 6000.3.7f1 演讲训练项目。`Main` 是唯一流程入口。
 
+代码直接使用正确的场景引用、Humanoid NPC、键鼠、评分配置和 VoiceAD 数据，不再校验错误配置、忽略非法输入或提供异常恢复。
+
 ## 使用
 
 1. 打开 `Assets/Scenes/SampleScene.unity`，进入 Play Mode。
@@ -9,7 +11,7 @@ Unity 6000.3.7f1 演讲训练项目。`Main` 是唯一流程入口。
 3. VoiceAD 向 `127.0.0.1:5005` 发送分析结果；按台词朗读并看向描边的 NPC。
 4. 收到本次发声的结束包后立即评分、换句，不等待 NPC 注视结束。10 句结束显示四维报告。训练中 Enter 不跳句，结束后停留在报告页；再次训练需重新进入 Play Mode。
 
-VoiceAD 的静音结束检测决定换句时机；本项目不检查朗读内容是否完整，不包含 ASR。未收到结束包时保持当前台词，超过 Main 的等待阈值只显示提示。
+VoiceAD 的静音结束检测决定换句时机；本项目不检查朗读内容是否完整，不包含 ASR。未收到结束包时保持当前台词。
 
 ## 代码和配置
 
@@ -19,7 +21,7 @@ VoiceAD 的静音结束检测决定换句时机；本项目不检查朗读内容
 | --- | --- |
 | `Main.cs` | Enter 开始、视线检测、逐句结算和结束 |
 | `Data` | 台词、目标及重音/停顿格式 |
-| `Voice` | 非阻塞 UDP 接收和输入校验 |
+| `Voice` | 非阻塞 UDP 接收 |
 | `Scoring` | 分段去重、时长加权、评分及一条建议 |
 | `Audience` | NPC 默认看向 Screen、独立计时恢复、描边、平滑转头、点头和鼓掌 |
 | `UI` | 台词、状态和报告 |
@@ -29,7 +31,7 @@ VoiceAD 的静音结束检测决定换句时机；本项目不检查朗读内容
 
 - 台词：`Assets/Presentation/Data/Speech.asset`，保留原 10 句。
 - 评分：`Assets/Presentation/Data/DefaultScoringProfile.asset`，训练前调整权重、区间及鼓掌阈值。默认表达、语速、音量、视线各占 25%。
-- 日志：`Application.persistentDataPath/Sessions/*.jsonl`，记录参数、每句结果及完成/中断状态；不保存音频。写入失败会在界面提示。
+- 日志：`Application.persistentDataPath/Sessions/*.jsonl`，记录参数、每句结果及完成/中断状态；不保存音频。
 - 场景通过 Inspector 引用连接 Main、TrainingView、摄像机和 6 个 AudienceRole。描边使用 PC_Renderer、RoleOutline 图层 6 及现有两个 Shader，仅保留当前 Unity 6 的 RenderGraph 路径。
 
 ## 视线事件

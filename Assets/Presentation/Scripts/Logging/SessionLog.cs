@@ -6,9 +6,9 @@ using UnityEngine;
 namespace PresentationRewrite {
     public sealed class SessionLog {
         public string FilePath { get; }
-        public string Error { get; private set; }
 
         public SessionLog(string directory, ScoringSettings settings) {
+            Directory.CreateDirectory(directory);
             FilePath = Path.Combine(directory, $"{DateTime.UtcNow:yyyyMMddTHHmmss}-{Guid.NewGuid():N}.jsonl");
             Write(new {
                 type = "start", utc = DateTime.UtcNow,
@@ -33,15 +33,7 @@ namespace PresentationRewrite {
         }
 
         private void Write(object record) {
-            if (Error != null) return;
-            try {
-                Directory.CreateDirectory(Path.GetDirectoryName(FilePath));
-                // ponytail: one synchronous append per line; queue writes only if disk latency affects frames.
-                File.AppendAllText(FilePath, JsonConvert.SerializeObject(record) + Environment.NewLine);
-            }
-            catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException) {
-                Error = exception.Message;
-            }
+            File.AppendAllText(FilePath, JsonConvert.SerializeObject(record) + Environment.NewLine);
         }
 
         private static float[] Components(Vector4 value) => new[] { value.x, value.y, value.z, value.w };

@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Collections.Generic;
-using System.Net.Sockets;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -12,7 +11,6 @@ namespace PresentationRewrite {
         [SerializeField] private TrainingView _view;
         [SerializeField] private Camera _camera;
         [SerializeField] private AudienceRole[] _audience;
-        [SerializeField, Min(1f)] private float _resultTimeout = 10f;
         [SerializeField, Min(-1), Tooltip("-1：总台词数 / 3；0：关闭；正数：次数上限")]
         private int _gazeEventCount = -1;
         private int _gazeEventsRemaining;
@@ -27,19 +25,9 @@ namespace PresentationRewrite {
         private double _shownAt;
         private double _completedSpeech;
         private bool _looked;
-        private float _lastResultAt;
         private SessionLog _log;
 
         private void OnEnable() {
-            if (_speech == null || _speech.lines == null || _speech.lines.Length == 0 ||
-                Array.Exists(_speech.lines, line => line == null || (uint)line.deliveryStyle > 3 || (uint)line.speed > 2 || (uint)line.volume > 2) ||
-                _profile == null || _profile.settings == null || !_profile.settings.IsValid ||
-                _view == null || !_view.IsConfigured || _camera == null ||
-                _audience == null || _audience.Length == 0 || Array.Exists(_audience, role => role == null)) {
-                Debug.LogError("Main: 请检查台词、评分配置、界面、摄像机和观众引用。", this);
-                enabled = false;
-                return;
-            }
             _line = -1;
             _scores = Vector4.zero;
             _gazeEvents = _gazeHits = 0;
@@ -52,7 +40,7 @@ namespace PresentationRewrite {
         private void Update() {
             if (_line < 0) {
                 var keyboard = Keyboard.current;
-                if (keyboard != null && (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame)) {
+                if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame) {
                     BeginTraining();
                 }
                 return;
@@ -71,30 +59,17 @@ namespace PresentationRewrite {
                 }
             }
 
-            try {
-                // Limit work per frame; no receive thread, event queue or blocking wait.
-                for (int i = 0; i < 64 && _voice != null && _voice.TryReceive(out var packet); i++) {
-                    if (packet == null || packet.utterance_started_at < _shownAt ||
-                        packet.utterance_started_at <= _completedSpeech || packet.utterance_started_at < _utterance.StartedAt) continue;
-                    _lastResultAt = Time.realtimeSinceStartup;
-                    if (_utterance.Add(packet)) CompleteLine();
-                }
-                if (_voice != null) UpdateStatus();
+            // Drain available packets without blocking the frame.
+            for (int i = 0; i < 64 && _voice != null && _voice.TryReceive(out var packet); i++) {
+                if (packet.utterance_started_at < _shownAt || packet.utterance_started_at <= _completedSpeech ||
+                    packet.utterance_started_at < _utterance.StartedAt) continue;
+                if (_utterance.Add(packet)) CompleteLine();
             }
-            catch (SocketException exception) {
-                _view.ShowMessage($"音声受信エラー: {exception.Message}");
-                enabled = false;
-            }
+            if (_voice != null) UpdateStatus();
         }
 
         private void BeginTraining() {
-            try {
-                _voice = new VoiceReceiver();
-            }
-            catch (SocketException exception) {
-                _view.ShowMessage($"音声受信を開始できません: {exception.Message}\nEnter キーで再試行");
-                return;
-            }
+            _voice = new VoiceReceiver();
             _line = 0;
             _gazeEventsRemaining = _gazeEventCount < 0 ? _speech.lines.Length / 3 : _gazeEventCount;
             _log = new SessionLog(Path.Combine(Application.persistentDataPath, "Sessions"), _profile.settings);
@@ -105,9 +80,8 @@ namespace PresentationRewrite {
             _utterance = new Utterance();
             _looked = false;
             _shownAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000d;
-            _lastResultAt = Time.realtimeSinceStartup;
             int index = _speech.lines[_line].targetRoleIndex;
-            _target = _audience[index >= 0 && index < _audience.Length ? index : _line % _audience.Length];
+            _target = _audience[index == -1 ? _line % _audience.Length : index];
             if (_gazeEventsRemaining > 0 && UnityEngine.Random.value < 0.5f) {
                 _gazeEventsRemaining--;
                 _gazeEvents++;
@@ -119,8 +93,7 @@ namespace PresentationRewrite {
         }
 
         private void UpdateStatus() {
-            _view.ShowStatus(TrainingView.StatusFor(_utterance.StartedAt > 0,
-                Time.realtimeSinceStartup - _lastResultAt, _resultTimeout), _log.Error);
+            _view.ShowStatus(TrainingView.StatusFor(_utterance.StartedAt > 0));
         }
 
         private void CompleteLine() {
@@ -138,7 +111,7 @@ namespace PresentationRewrite {
             _voice = null;
             var average = AverageScores();
             _log.Finish(true, _line, average, Scoring.Total(average, settings, _gazeEvents > 0));
-            _view.ShowResult(average, settings, _log.Error, _gazeEvents > 0);
+            _view.ShowResult(average, settings, _gazeEvents > 0);
             if (Scoring.Total(average, settings, _gazeEvents > 0) >= settings.applauseThreshold) {
                 foreach (var role in _audience) role.Clap();
             }
@@ -151,9 +124,9 @@ namespace PresentationRewrite {
         }
 
         private void OnDisable() {
-            if (_voice != null && _log != null) {
+            if (_voice != null) {
                 var average = AverageScores();
-                _log.Finish(false, Math.Max(0, _line), average, Scoring.Total(average, _profile.settings, _gazeEvents > 0));
+                _log.Finish(false, _line, average, Scoring.Total(average, _profile.settings, _gazeEvents > 0));
             }
             _voice?.Dispose();
             _voice = null;
