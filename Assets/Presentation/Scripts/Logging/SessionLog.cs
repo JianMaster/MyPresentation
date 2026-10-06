@@ -24,7 +24,7 @@ namespace PresentationRewrite {
                 type = "line", utc = DateTime.UtcNow, index, line.lineId,
                 delivery = line.deliveryStyle.ToString(), speed = line.speed.ToString(), volume = line.volume.ToString(),
                 mean = new { arousal = voice.x, dominance = voice.y, speech_rate = voice.z, loudness = voice.w },
-                scores = Components(scores), total
+                scores = new[] { scores.x, scores.y, scores.z }, total
             });
         }
 

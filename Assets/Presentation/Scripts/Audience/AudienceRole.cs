@@ -29,6 +29,8 @@ namespace PresentationRewrite {
             LookAt(null);
         }
 
+        public bool IsLookingAt(Transform target) => _target == target && Time.time < _restoreAt;
+
         public void LookAt(Transform target) {
             _target = target != null ? target : _defaultTarget;
             _restoreAt = target != null ? Time.time + _lookDuration : 0;

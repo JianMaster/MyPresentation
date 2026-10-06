@@ -41,10 +41,11 @@ namespace PresentationRewrite {
             _status = null;
         }
 
-        public void ShowResult(Vector4 scores, ScoringSettings settings, string logError) {
-            _text.text = $"トレーニング完了\n\n総合　{Scoring.Total(scores, settings):F1}\n" +
-                $"音声表現　{scores.x:F1}\n話速　{scores.y:F1}\n音量　{scores.z:F1}\n視線　{scores.w:F1}\n\n" +
-                Scoring.Advice(scores, settings) + LogWarning(logError);
+        public void ShowResult(Vector4 scores, ScoringSettings settings, string logError, bool includeGaze = true) {
+            _text.text = $"トレーニング完了\n\n総合　{Scoring.Total(scores, settings, includeGaze):F1}\n" +
+                $"音声表現　{scores.x:F1}\n話速　{scores.y:F1}\n音量　{scores.z:F1}\n" +
+                (includeGaze ? $"視線　{scores.w:F1}\n\n" : "視線　対象なし\n\n") +
+                Scoring.Advice(scores, settings, includeGaze) + LogWarning(logError);
         }
 
         private static string LogWarning(string error) => error == null ? string.Empty : "\n<color=#FF7043>記録を保存できませんでした。</color>";

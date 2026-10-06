@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
 using System.Net.Sockets;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -15,6 +16,8 @@ namespace PresentationRewrite {
         [SerializeField, Min(-1), Tooltip("-1：总台词数 / 3；0：关闭；正数：次数上限")]
         private int _gazeEventCount = -1;
         private int _gazeEventsRemaining;
+        private int _gazeEvents, _gazeHits;
+        private readonly HashSet<AudienceRole> _pendingGaze = new HashSet<AudienceRole>();
 
         private VoiceReceiver _voice;
         private Utterance _utterance;
@@ -39,6 +42,8 @@ namespace PresentationRewrite {
             }
             _line = -1;
             _scores = Vector4.zero;
+            _gazeEvents = _gazeHits = 0;
+            _pendingGaze.Clear();
             _completedSpeech = 0;
             _log = null;
             _view.ShowMessage("Enter キーでトレーニング開始");
@@ -54,10 +59,16 @@ namespace PresentationRewrite {
             }
             if (_voice == null) return;
 
-            if (!_looked && Physics.Raycast(_camera.ViewportPointToRay(new Vector3(0.5f, 0.5f)), out var hit, 100f) &&
-                hit.transform.IsChildOf(_target.transform)) {
-                _looked = true;
-                _target.Nod();
+            if (Physics.Raycast(_camera.ViewportPointToRay(new Vector3(0.5f, 0.5f)), out var hit, 100f)) {
+                var role = hit.transform.GetComponentInParent<AudienceRole>();
+                if (role != null && role.IsLookingAt(_camera.transform) && _pendingGaze.Remove(role)) {
+                    _gazeHits++;
+                    role.Nod();
+                }
+                if (!_looked && hit.transform.IsChildOf(_target.transform)) {
+                    _looked = true;
+                    _target.Nod();
+                }
             }
 
             try {
@@ -99,6 +110,8 @@ namespace PresentationRewrite {
             _target = _audience[index >= 0 && index < _audience.Length ? index : _line % _audience.Length];
             if (_gazeEventsRemaining > 0 && UnityEngine.Random.value < 0.5f) {
                 _gazeEventsRemaining--;
+                _gazeEvents++;
+                _pendingGaze.Add(_target);
                 _target.LookAt(_camera.transform);
             }
             _view.ShowLine(_speech.lines[_line], _line, _speech.lines.Length);
@@ -113,9 +126,9 @@ namespace PresentationRewrite {
         private void CompleteLine() {
             _completedSpeech = _utterance.StartedAt;
             var settings = _profile.settings;
-            var scores = Scoring.Evaluate(_speech.lines[_line], _utterance.Mean, _looked, settings);
+            var scores = Scoring.Evaluate(_speech.lines[_line], _utterance.Mean, settings);
             _scores += scores;
-            _log.Line(_line + 1, _speech.lines[_line], _utterance.Mean, scores, Scoring.Total(scores, settings));
+            _log.Line(_line + 1, _speech.lines[_line], _utterance.Mean, scores, Scoring.Total(scores, settings, false));
             _line++;
             if (_line < _speech.lines.Length) {
                 ShowLine();
@@ -123,18 +136,24 @@ namespace PresentationRewrite {
             }
             _voice.Dispose();
             _voice = null;
-            var average = _scores / _line;
-            _log.Finish(true, _line, average, Scoring.Total(average, settings));
-            _view.ShowResult(average, settings, _log.Error);
-            if (Scoring.Total(average, settings) >= settings.applauseThreshold) {
+            var average = AverageScores();
+            _log.Finish(true, _line, average, Scoring.Total(average, settings, _gazeEvents > 0));
+            _view.ShowResult(average, settings, _log.Error, _gazeEvents > 0);
+            if (Scoring.Total(average, settings, _gazeEvents > 0) >= settings.applauseThreshold) {
                 foreach (var role in _audience) role.Clap();
             }
         }
 
+        private Vector4 AverageScores() {
+            var average = _line > 0 ? _scores / _line : Vector4.zero;
+            average.w = _gazeEvents > 0 ? 100f * _gazeHits / _gazeEvents : 0f;
+            return average;
+        }
+
         private void OnDisable() {
             if (_voice != null && _log != null) {
-                var average = _line > 0 ? _scores / _line : Vector4.zero;
-                _log.Finish(false, Math.Max(0, _line), average, Scoring.Total(average, _profile.settings));
+                var average = AverageScores();
+                _log.Finish(false, Math.Max(0, _line), average, Scoring.Total(average, _profile.settings, _gazeEvents > 0));
             }
             _voice?.Dispose();
             _voice = null;

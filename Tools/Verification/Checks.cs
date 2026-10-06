@@ -49,24 +49,24 @@ internal static class Checks {
 
             var line = new SpeechLine { deliveryStyle = Delivery.EnergeticConfident };
             var voice = new Vector4(1, 1, 3.5f, 0.45f);
-            Near(Scoring.Total(Scoring.Evaluate(line, voice, true, settings), settings), 100f, "Matching voice and gaze score 100");
-            Near(Scoring.Total(Scoring.Evaluate(line, voice, false, settings), settings), 75f, "Missing gaze subtracts 25 points");
+            Near(Scoring.Total(Scoring.Evaluate(line, voice, settings), settings, false), 100f, "Line attributes exclude gaze");
+            Near(Scoring.Total(new Vector4(100, 100, 100, 50), settings), 87.5f, "Independent gaze score contributes only to final total");
             foreach (Delivery delivery in Enum.GetValues(typeof(Delivery))) {
                 line.deliveryStyle = delivery;
                 voice.x = delivery == Delivery.EnergeticConfident || delivery == Delivery.EnergeticHesitant ? 1 : -1;
                 voice.y = delivery == Delivery.CalmConfident || delivery == Delivery.EnergeticConfident ? 1 : -1;
-                Near(Scoring.Evaluate(line, voice, true, settings).x, 100f, "Delivery target " + delivery);
+                Near(Scoring.Evaluate(line, voice, settings).x, 100f, "Delivery target " + delivery);
             }
             line.speed = Level.Low;
             line.volume = Level.High;
             voice.z = 2;
             voice.w = 0.6f;
-            Near(Scoring.Evaluate(line, voice, true, settings).y, 100, "Slow speed boundary");
-            Near(Scoring.Evaluate(line, voice, true, settings).z, 100, "Loud volume boundary");
+            Near(Scoring.Evaluate(line, voice, settings).y, 100, "Slow speed boundary");
+            Near(Scoring.Evaluate(line, voice, settings).z, 100, "Loud volume boundary");
             voice.z = 5;
             voice.w = 0.3f;
-            Near(Scoring.Evaluate(line, voice, true, settings).y, 0, "Speed falloff");
-            Near(Scoring.Evaluate(line, voice, true, settings).z, 0, "Volume falloff");
+            Near(Scoring.Evaluate(line, voice, settings).y, 0, "Speed falloff");
+            Near(Scoring.Evaluate(line, voice, settings).z, 0, "Volume falloff");
 
             Assert(settings.IsValid, "Default scoring configuration valid");
             settings.weights = new Vector4(0, 0, 0, 1);
@@ -80,7 +80,7 @@ internal static class Checks {
             Assert(!settings.IsValid, "Non-finite scoring parameter rejected");
             settings = new ScoringSettings { speedBand = new Vector2(8, 10) };
             line.speed = Level.Normal;
-            Near(Scoring.Evaluate(line, new Vector4(1, 1, 9, 0.45f), true, settings).y, 100, "Configured interval affects scoring");
+            Near(Scoring.Evaluate(line, new Vector4(1, 1, 9, 0.45f), settings).y, 100, "Configured interval affects scoring");
             settings = new ScoringSettings();
             Assert(Scoring.Advice(new Vector4(90, 10, 80, 100), settings).Contains("話速"), "Advice selects weakest dimension");
 
@@ -106,7 +106,7 @@ internal static class Checks {
             Assert(records.Length == 3 && log.Error == null, "One start, one line and one summary logged");
             var resultRecord = JObject.Parse(records[1]);
             Near(resultRecord["mean"]["speech_rate"].Value<float>(), 3.5f, "Log contains acoustic averages");
-            Near(resultRecord["scores"][3].Value<float>(), 0, "Log preserves gaze score");
+            Assert(((JArray)resultRecord["scores"]).Count == 3, "Line log contains only voice attributes");
             Assert(JObject.Parse(records[2])["completed"].Value<bool>(), "Completed summary distinguishable");
             var interrupted = new SessionLog(logDirectory, settings);
             interrupted.Finish(false, 0, Vector4.zero, 0);

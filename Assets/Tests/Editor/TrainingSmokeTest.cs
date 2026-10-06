@@ -144,7 +144,7 @@ public static class TrainingSmokeTest {
                     _packet = PacketFor(_line);
                     break;
                 case 5:
-                    Check(Read<bool>("_looked"), "Real camera ray completes gaze on line " + (_line + 1));
+                    Check(Read<int>("_gazeHits") == _events, "Only triggered gaze events score, once per event");
                     Check(RoleRead<float>(_eventTarget, "_nodTime") >= 0, "Gaze still triggers the original nod feedback");
                     if (_event) Check(_eventTarget.gameObject.layer == 6 && RoleRead<float>(_eventTarget, "_restoreAt") == _restoreAt, "Gaze and nod do not cancel or restart NPC timer");
                     Read<Camera>("_camera").transform.rotation = Quaternion.LookRotation(Vector3.up);
@@ -226,11 +226,11 @@ public static class TrainingSmokeTest {
                         success = true, checks = _checks, completedLines = _line * Rounds.Count, totalScore = 100, rounds = Rounds,
                         unity = Application.unityVersion, scene = "Assets/Scenes/SampleScene.unity",
                         keyboard = "Enter starts; NumpadEnter while active does not advance",
-                        transport = "Actual UDP 127.0.0.1:5005", gaze = "Per-line random check with cap; NPC owns timer; immediate voice advance; nod preserved; original scoring",
+                        transport = "Actual UDP 127.0.0.1:5005", gaze = "Per-line random check with cap; NPC owns timer; immediate voice advance; nod preserved; independent gaze scoring",
                         rendererResources = "Repeated Create releases old materials; Dispose releases final materials",
                         editorIssues = EditorIssues.ToArray(), utc = DateTime.UtcNow
                     }, Formatting.Indented));
-                    Debug.Log("UDP_SMOKE_SUCCESS: " + _checks + " checks, 4 full sessions, original scoring preserved.");
+                    Debug.Log("UDP_SMOKE_SUCCESS: " + _checks + " checks, 4 full sessions, independent gaze scoring.");
                     Finish(0);
                     break;
             }
